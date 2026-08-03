@@ -76,7 +76,7 @@ fn serialize_xml_node(node: &TreeNode, buf: &mut String, depth: usize) {
                 }
             }
             Mark::Attribute => {
-                // Collected by parent element.
+                // Collected by parent.
             }
             Mark::None | Mark::Element => {
                 let indent = "  ".repeat(depth);
@@ -382,7 +382,7 @@ fn serialize_sql(node: &TreeNode, buf: &mut String) {
         return;
     }
 
-    // Single row from the root's children.
+    // Single row from root's children.
     emit_insert_from_children(table, children, buf);
 }
 
@@ -489,7 +489,7 @@ fn collect_text_into(node: &TreeNode, buf: &mut String) {
     }
 }
 
-/// Check if a node has any visible content.
+/// Check if node has visible content.
 fn has_visible_content(node: &TreeNode) -> bool {
     match node {
         TreeNode::Text { mark, value } => *mark != Mark::Hidden && !value.is_empty(),
@@ -503,7 +503,7 @@ fn has_visible_content(node: &TreeNode) -> bool {
     }
 }
 
-/// Flatten hidden elements to collect visible element children.
+/// Flatten hidden elements to collect visible children.
 fn collect_visible_elements<'a>(nodes: &[&'a TreeNode]) -> Vec<&'a TreeNode> {
     let mut result = Vec::new();
     for node in nodes {
@@ -528,7 +528,7 @@ fn collect_visible_elements<'a>(nodes: &[&'a TreeNode]) -> Vec<&'a TreeNode> {
     result
 }
 
-/// Check if a node is purely text content (no nested elements).
+/// Check if node is purely text (no nested elements).
 fn group_by_name<'a>(nodes: &[&'a TreeNode]) -> Vec<(String, Vec<&'a TreeNode>)> {
     let mut groups: Vec<(String, Vec<&TreeNode>)> = Vec::new();
     for node in nodes {

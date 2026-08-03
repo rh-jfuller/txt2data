@@ -13,7 +13,7 @@ pub use serialize::{ParseTree, TreeNode, to_json, to_sql, to_xml, to_yaml};
 ///
 /// # Errors
 ///
-/// Returns error if the grammar is invalid or input doesn't match.
+/// Returns error if grammar is invalid or input doesn't match.
 pub fn parse_to_json(grammar_src: &str, input: &str) -> Result<String, String> {
     let grammar = parse_grammar(grammar_src).map_err(|e| format!("Grammar error: {e}"))?;
     let parser = Parser::new(&grammar);
@@ -27,7 +27,7 @@ pub fn parse_to_json(grammar_src: &str, input: &str) -> Result<String, String> {
 ///
 /// # Errors
 ///
-/// Returns error if the grammar is invalid or input doesn't match.
+/// Returns error if grammar is invalid or input doesn't match.
 pub fn parse_to_xml(grammar_src: &str, input: &str) -> Result<String, String> {
     let grammar = parse_grammar(grammar_src).map_err(|e| format!("Grammar error: {e}"))?;
     let parser = Parser::new(&grammar);
@@ -41,7 +41,7 @@ pub fn parse_to_xml(grammar_src: &str, input: &str) -> Result<String, String> {
 ///
 /// # Errors
 ///
-/// Returns error if the grammar is invalid or input doesn't match.
+/// Returns error if grammar is invalid or input doesn't match.
 pub fn parse_to_yaml(grammar_src: &str, input: &str) -> Result<String, String> {
     let grammar = parse_grammar(grammar_src).map_err(|e| format!("Grammar error: {e}"))?;
     let parser = Parser::new(&grammar);
@@ -55,7 +55,7 @@ pub fn parse_to_yaml(grammar_src: &str, input: &str) -> Result<String, String> {
 ///
 /// # Errors
 ///
-/// Returns error if the grammar is invalid or input doesn't match.
+/// Returns error if grammar is invalid or input doesn't match.
 pub fn parse_to_sql(grammar_src: &str, input: &str) -> Result<String, String> {
     let grammar = parse_grammar(grammar_src).map_err(|e| format!("Grammar error: {e}"))?;
     let parser = Parser::new(&grammar);
