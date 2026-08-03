@@ -375,8 +375,11 @@ fn sql_single_row() {
         age: ["0"-"9"]+.
     "#;
     let sql = parse_to_sql(grammar, "alice,30").unwrap();
-    assert!(sql.contains("INSERT INTO row"), "Missing INSERT: {sql}");
-    assert!(sql.contains("(name, age)"), "Missing columns: {sql}");
+    assert!(sql.contains("INSERT INTO \"row\""), "Missing INSERT: {sql}");
+    assert!(
+        sql.contains("(\"name\", \"age\")"),
+        "Missing columns: {sql}"
+    );
     assert!(sql.contains("('alice', '30')"), "Missing values: {sql}");
 }
 
@@ -392,7 +395,10 @@ fn sql_multiple_rows() {
     let sql = parse_to_sql(grammar, "alice,30\nbob,42").unwrap();
     let lines: Vec<&str> = sql.lines().collect();
     assert_eq!(lines.len(), 2, "Expected 2 INSERT statements: {sql}");
-    assert!(lines[0].contains("INSERT INTO csv"), "Wrong table: {sql}");
+    assert!(
+        lines[0].contains("INSERT INTO \"csv\""),
+        "Wrong table: {sql}"
+    );
     assert!(lines[0].contains("'alice'"), "Missing alice: {sql}");
     assert!(lines[1].contains("'bob'"), "Missing bob: {sql}");
 }
@@ -420,7 +426,7 @@ fn sql_with_attributes() {
     "#;
     let sql = parse_to_sql(grammar, "width:100px").unwrap();
     assert!(
-        sql.contains("(prop, val)"),
+        sql.contains("(\"prop\", \"val\")"),
         "Attributes should become columns: {sql}"
     );
     assert!(sql.contains("('width', '100px')"), "Wrong values: {sql}");
@@ -761,7 +767,7 @@ fn sql_attributes_in_repeated_rows() {
     let sql = parse_to_sql(grammar, "1alice\n2bob").unwrap();
     let lines: Vec<&str> = sql.lines().collect();
     assert_eq!(lines.len(), 2, "Expected 2 INSERT statements: {sql}");
-    assert!(sql.contains("(id, name)"), "Missing columns: {sql}");
+    assert!(sql.contains("(\"id\", \"name\")"), "Missing columns: {sql}");
     assert!(lines[0].contains("'1'"), "Missing id 1: {sql}");
     assert!(lines[0].contains("'alice'"), "Missing alice: {sql}");
     assert!(lines[1].contains("'2'"), "Missing id 2: {sql}");

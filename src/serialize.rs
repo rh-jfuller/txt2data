@@ -402,14 +402,14 @@ fn emit_insert_from_children(table: &str, children: &[TreeNode], buf: &mut Strin
     let mut vals: Vec<String> = Vec::new();
 
     for (aname, aval) in &attrs {
-        cols.push(aname.clone());
+        cols.push(sql_identifier(aname));
         vals.push(sql_quote(aval));
     }
 
     for node in &visible {
         if let TreeNode::Element { name, .. } = node {
             let text = collect_text(node);
-            cols.push(name.clone());
+            cols.push(sql_identifier(name));
             vals.push(sql_quote(&text));
         }
     }
@@ -420,7 +420,8 @@ fn emit_insert_from_children(table: &str, children: &[TreeNode], buf: &mut Strin
 
     let _ = writeln!(
         buf,
-        "INSERT INTO {table} ({}) VALUES ({});",
+        "INSERT INTO {} ({}) VALUES ({});",
+        sql_identifier(table),
         cols.join(", "),
         vals.join(", ")
     );
@@ -583,6 +584,7 @@ fn xml_escape_attr(s: &str) -> String {
 }
 
 fn json_escape(s: &str) -> String {
+    use std::fmt::Write;
     let mut buf = String::with_capacity(s.len());
     for ch in s.chars() {
         match ch {
@@ -591,6 +593,9 @@ fn json_escape(s: &str) -> String {
             '\n' => buf.push_str("\\n"),
             '\r' => buf.push_str("\\r"),
             '\t' => buf.push_str("\\t"),
+            c if c.is_control() => {
+                let _ = write!(buf, "\\u{:04x}", c as u32);
+            }
             _ => buf.push(ch),
         }
     }
@@ -616,8 +621,12 @@ fn yaml_escape(s: &str) -> String {
         || s.contains('>')
         || s.contains('%')
         || s.contains('@')
+        || s.contains('?')
         || s.starts_with(' ')
+        || s.starts_with('-')
         || s.ends_with(' ')
+        || s.starts_with("---")
+        || s.starts_with("...")
         || s == "true"
         || s == "false"
         || s == "null"
@@ -627,6 +636,11 @@ fn yaml_escape(s: &str) -> String {
     } else {
         s.to_string()
     }
+}
+
+fn sql_identifier(s: &str) -> String {
+    let escaped = s.replace('"', "\"\"");
+    format!("\"{escaped}\"")
 }
 
 fn sql_quote(s: &str) -> String {

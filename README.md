@@ -137,8 +137,8 @@ row:
 **SQL** `-f sql`
 
 ```sql
-INSERT INTO csv (name, age) VALUES ('alice', '30');
-INSERT INTO csv (name, age) VALUES ('bob', '42');
+INSERT INTO "csv" ("name", "age") VALUES ('alice', '30');
+INSERT INTO "csv" ("name", "age") VALUES ('bob', '42');
 ```
 
 ## How it works
@@ -179,6 +179,17 @@ txt2data [OPTIONS]
   -f, --format <FORMAT>   json (default), xml, yaml, sql
   -h, --help
   -V, --version
+```
+
+### Environment variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `TXT2DATA_MAX_GRAMMAR` | `1048576` (1 MB) | Max grammar size in bytes |
+| `TXT2DATA_MAX_INPUT` | `10485760` (10 MB) | Max input size in bytes |
+
+```sh
+TXT2DATA_MAX_INPUT=52428800 txt2data -g big.ixml -i huge.txt
 ```
 
 ## Make targets
