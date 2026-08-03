@@ -2,6 +2,8 @@
 
 use txt2data::{parse_grammar, parse_to_json, parse_to_sql, parse_to_xml, parse_to_yaml};
 
+// ── Grammar parsing edge cases ──────────────────────────────────────
+
 #[test]
 fn greeting_to_xml() {
     let grammar = r#"
@@ -422,4 +424,508 @@ fn sql_with_attributes() {
         "Attributes should become columns: {sql}"
     );
     assert!(sql.contains("('width', '100px')"), "Wrong values: {sql}");
+}
+
+// ── Grammar parsing edge cases ──────────────────────────────────────
+
+#[test]
+fn single_quoted_literal() {
+    let grammar = "root: 'hello'.";
+    let xml = parse_to_xml(grammar, "hello").unwrap();
+    assert!(xml.contains("<root>hello</root>"), "Bad output: {xml}");
+}
+
+#[test]
+fn doubled_double_quote_escape() {
+    let grammar = r#"root: "he""llo"."#;
+    let xml = parse_to_xml(grammar, "he\"llo").unwrap();
+    assert!(
+        xml.contains("he\"llo"),
+        "Doubled quote not unescaped: {xml}"
+    );
+}
+
+#[test]
+fn doubled_single_quote_escape() {
+    let grammar = "root: 'it''s'.";
+    let xml = parse_to_xml(grammar, "it's").unwrap();
+    assert!(xml.contains("it's"), "Doubled quote not unescaped: {xml}");
+}
+
+#[test]
+fn ixml_version_prolog() {
+    let grammar = r#"ixml version "1.0" . root: "ok"."#;
+    let json = parse_to_json(grammar, "ok").unwrap();
+    assert!(json.contains("ok"), "Prolog broke parsing: {json}");
+}
+
+#[test]
+fn ixml_version_prolog_single_quoted() {
+    let grammar = "ixml version '1.1' . root: 'ok'.";
+    let json = parse_to_json(grammar, "ok").unwrap();
+    assert!(json.contains("ok"), "Prolog broke parsing: {json}");
+}
+
+#[test]
+fn rule_name_starting_with_ixml() {
+    let grammar = "ixmldata: 'x'.";
+    let json = parse_to_json(grammar, "x").unwrap();
+    // Root element name doesn't appear as key in JSON, but parse succeeds
+    // (i.e., "ixmldata" wasn't consumed as an ixml prolog).
+    assert!(json.contains('x'), "Rule name swallowed as prolog: {json}");
+}
+
+#[test]
+fn equals_sign_rule_separator() {
+    let grammar = "root = 'ok'.";
+    let json = parse_to_json(grammar, "ok").unwrap();
+    assert!(json.contains("ok"), "= separator failed: {json}");
+}
+
+#[test]
+fn pipe_alternative_separator() {
+    let grammar = "root: 'a' | 'b'.";
+    let r1 = parse_to_xml(grammar, "a");
+    assert!(r1.is_ok(), "Failed on 'a': {r1:?}");
+    let r2 = parse_to_xml(grammar, "b");
+    assert!(r2.is_ok(), "Failed on 'b': {r2:?}");
+}
+
+#[test]
+fn nested_comments() {
+    let grammar = "{outer {inner} still outer} root: 'ok'.";
+    let json = parse_to_json(grammar, "ok").unwrap();
+    assert!(json.contains("ok"), "Nested comment broke parsing: {json}");
+}
+
+#[test]
+fn comment_inside_rule_body() {
+    let grammar = "root: 'a' {mid-rule comment} , 'b'.";
+    let xml = parse_to_xml(grammar, "ab").unwrap();
+    assert!(xml.contains("ab"), "Mid-rule comment broke parse: {xml}");
+}
+
+#[test]
+fn implicit_sequence_no_commas() {
+    let grammar = "root: 'a' 'b' 'c'.";
+    let xml = parse_to_xml(grammar, "abc").unwrap();
+    assert!(xml.contains("abc"), "Implicit sequence failed: {xml}");
+}
+
+#[test]
+fn element_mark_caret() {
+    let grammar = r#"
+        root: ^item.
+        ^item: ["a"-"z"]+.
+    "#;
+    let xml = parse_to_xml(grammar, "hello").unwrap();
+    assert!(
+        xml.contains("<item>hello</item>"),
+        "^ mark should produce element: {xml}"
+    );
+    let json = parse_to_json(grammar, "hello").unwrap();
+    assert!(json.contains("\"item\""), "^ mark missing in JSON: {json}");
+}
+
+#[test]
+fn charset_multiple_members() {
+    let grammar = r#"root: ["abc"; "0"-"9"]+."#;
+    let xml = parse_to_xml(grammar, "a3b7c").unwrap();
+    assert!(xml.contains("a3b7c"), "Multi-member charset failed: {xml}");
+}
+
+#[test]
+fn multi_char_charset_inclusion() {
+    let grammar = r#"root: ["aeiou"]+."#;
+    let xml = parse_to_xml(grammar, "aeiou").unwrap();
+    assert!(xml.contains("aeiou"), "Multi-char chars failed: {xml}");
+}
+
+// ── Earley parser edge cases ────────────────────────────────────────
+
+#[test]
+fn deeply_nested_rules() {
+    let grammar = r#"
+        a: b.
+        b: c.
+        c: d.
+        d: ["x"].
+    "#;
+    let json = parse_to_json(grammar, "x").unwrap();
+    assert!(json.contains("\"d\""), "Deep nesting missing leaf: {json}");
+    assert!(json.contains("\"c\""), "Deep nesting missing c: {json}");
+    assert!(json.contains("\"b\""), "Deep nesting missing b: {json}");
+}
+
+#[test]
+fn emoji_in_literal() {
+    let grammar = "root: \"\u{1F389}\".";
+    let xml = parse_to_xml(grammar, "\u{1F389}").unwrap();
+    assert!(xml.contains("\u{1F389}"), "Emoji not matched: {xml}");
+}
+
+#[test]
+fn multibyte_unicode_input() {
+    let grammar = r"root: [L]+.";
+    let xml = parse_to_xml(grammar, "\u{00FC}ber").unwrap();
+    assert!(
+        xml.contains("\u{00FC}ber"),
+        "Multibyte unicode failed: {xml}"
+    );
+}
+
+#[test]
+fn partial_match_error_message() {
+    let grammar = r#"root: "abc"."#;
+    let result = parse_to_json(grammar, "abd");
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert!(err.contains("Parse error"), "Bad error format: {err}");
+}
+
+#[test]
+fn single_char_vs_multichar_literal() {
+    let grammar = "root: 'hello'.";
+    let result = parse_to_json(grammar, "h");
+    assert!(result.is_err(), "Should fail on partial literal");
+}
+
+#[test]
+fn group_single_term_inlined() {
+    // Single-alt, single-term groups are inlined. Multi-term or
+    // multi-alt groups produce synthetic nonterminals (known limitation).
+    let grammar = "root: ('a'), 'b'.";
+    let xml = parse_to_xml(grammar, "ab").unwrap();
+    assert!(xml.contains("ab"), "Single-term group failed: {xml}");
+}
+
+// ── Serialization edge cases ────────────────────────────────────────
+
+#[test]
+fn xml_escapes_special_chars() {
+    let grammar = r"root: val.
+        val: ~[]+.";
+    let xml = parse_to_xml(grammar, "<b>A&B</b>").unwrap();
+    assert!(
+        xml.contains("&lt;b&gt;A&amp;B&lt;/b&gt;"),
+        "XML not escaped: {xml}"
+    );
+}
+
+#[test]
+fn xml_attribute_escapes_quotes() {
+    let grammar = r"
+        root: @val.
+        @val: ~[]+.
+    ";
+    let xml = parse_to_xml(grammar, "say \"hi\"").unwrap();
+    assert!(
+        xml.contains("&quot;"),
+        "Attribute quotes not escaped: {xml}"
+    );
+}
+
+#[test]
+fn json_escapes_special_chars() {
+    let grammar = "root: val.\nval: ~[]+.";
+    let json = parse_to_json(grammar, "line1\nline2").unwrap();
+    assert!(
+        json.contains("line1\\nline2"),
+        "JSON newline not escaped: {json}"
+    );
+}
+
+#[test]
+fn json_escapes_backslash() {
+    let grammar = "root: val.\nval: ~[]+.";
+    let json = parse_to_json(grammar, "a\\b").unwrap();
+    assert!(
+        json.contains("a\\\\b"),
+        "JSON backslash not escaped: {json}"
+    );
+}
+
+#[test]
+fn yaml_quotes_special_values() {
+    let grammar = "root: val.\nval: ~[]+.";
+
+    let yaml_true = parse_to_yaml(grammar, "true").unwrap();
+    assert!(
+        yaml_true.contains("\"true\""),
+        "YAML 'true' should be quoted: {yaml_true}"
+    );
+
+    let yaml_null = parse_to_yaml(grammar, "null").unwrap();
+    assert!(
+        yaml_null.contains("\"null\""),
+        "YAML 'null' should be quoted: {yaml_null}"
+    );
+}
+
+#[test]
+fn yaml_quotes_colon_value() {
+    let grammar = "root: val.\nval: ~[]+.";
+    let yaml = parse_to_yaml(grammar, "key: value").unwrap();
+    assert!(
+        yaml.contains("\"key: value\""),
+        "YAML colon value should be quoted: {yaml}"
+    );
+}
+
+#[test]
+fn insertion_in_json() {
+    // Insertions appear in XML output but JSON only captures
+    // element/text structure from matched input.
+    let grammar = r#"
+        greeting: +"Hello ", name.
+        name: ["A"-"Z"], ["a"-"z"]*.
+    "#;
+    let json = parse_to_json(grammar, "World").unwrap();
+    assert!(
+        json.contains("World"),
+        "Insertion test: name missing in JSON: {json}"
+    );
+}
+
+#[test]
+fn insertion_in_yaml() {
+    let grammar = r#"
+        greeting: +"hello ", name.
+        name: ["A"-"Z"], ["a"-"z"]*.
+    "#;
+    let yaml = parse_to_yaml(grammar, "World").unwrap();
+    assert!(
+        yaml.contains("World"),
+        "Insertion test: name missing in YAML: {yaml}"
+    );
+}
+
+#[test]
+fn insertion_in_sql() {
+    let grammar = r#"
+        root: name.
+        name: +"Dr. ", raw.
+        raw: ["a"-"z"]+.
+    "#;
+    let sql = parse_to_sql(grammar, "smith").unwrap();
+    assert!(sql.contains("Dr. smith"), "Insertion missing in SQL: {sql}");
+}
+
+#[test]
+fn hex_insertion() {
+    // +#20 inserts a space into output (not matched in input).
+    // Input has no space; the two words are distinguished by case.
+    let grammar = r#"
+        root: upper, +#20, lower.
+        upper: ["A"-"Z"]+.
+        lower: ["a"-"z"]+.
+    "#;
+    let xml = parse_to_xml(grammar, "ABCdef").unwrap();
+    assert!(xml.contains(' '), "Hex insertion missing space: {xml}");
+}
+
+#[test]
+fn xml_self_closing_empty_element() {
+    let grammar = "root: -'x'.";
+    let xml = parse_to_xml(grammar, "x").unwrap();
+    assert!(
+        xml.contains("<root/>"),
+        "Empty element should self-close: {xml}"
+    );
+}
+
+#[test]
+fn deeply_nested_json_structure() {
+    let grammar = r#"
+        a: b.
+        b: c.
+        c: d.
+        d: ["x"].
+    "#;
+    let json = parse_to_json(grammar, "x").unwrap();
+    // Root element "a" is implicit (not a key); children are nested.
+    assert!(json.contains("\"b\""), "Missing b: {json}");
+    assert!(json.contains("\"c\""), "Missing c: {json}");
+    assert!(json.contains("\"d\""), "Missing d: {json}");
+}
+
+#[test]
+fn sql_attributes_in_repeated_rows() {
+    let grammar = r#"
+        csv: row+.
+        row: @id, name, -nl?.
+        @id: ["0"-"9"]+.
+        name: ["a"-"z"]+.
+        -nl: #0A.
+    "#;
+    let sql = parse_to_sql(grammar, "1alice\n2bob").unwrap();
+    let lines: Vec<&str> = sql.lines().collect();
+    assert_eq!(lines.len(), 2, "Expected 2 INSERT statements: {sql}");
+    assert!(sql.contains("(id, name)"), "Missing columns: {sql}");
+    assert!(lines[0].contains("'1'"), "Missing id 1: {sql}");
+    assert!(lines[0].contains("'alice'"), "Missing alice: {sql}");
+    assert!(lines[1].contains("'2'"), "Missing id 2: {sql}");
+    assert!(lines[1].contains("'bob'"), "Missing bob: {sql}");
+}
+
+// ── Error cases ─────────────────────────────────────────────────────
+
+#[test]
+fn error_unclosed_double_quote() {
+    let result = parse_grammar("root: \"hello.");
+    assert!(result.is_err(), "Unclosed double quote should fail");
+}
+
+#[test]
+fn error_unclosed_single_quote() {
+    let result = parse_grammar("root: 'hello.");
+    assert!(result.is_err(), "Unclosed single quote should fail");
+}
+
+#[test]
+fn error_missing_period() {
+    let result = parse_grammar("root: 'a'");
+    assert!(result.is_err(), "Missing period should fail");
+}
+
+#[test]
+fn error_bad_hex_code() {
+    let result = parse_grammar("root: #GG.");
+    assert!(result.is_err(), "Bad hex should fail");
+}
+
+#[test]
+fn error_invalid_unicode_codepoint() {
+    let result = parse_grammar("root: #D800.");
+    assert!(result.is_err(), "Surrogate codepoint should fail");
+}
+
+#[test]
+fn error_empty_grammar() {
+    let grammar = parse_grammar("");
+    assert!(grammar.is_ok(), "Empty grammar should parse");
+    let result = parse_to_json("", "anything");
+    assert!(result.is_err(), "Empty grammar should fail to parse input");
+}
+
+#[test]
+fn error_whitespace_only_grammar() {
+    let grammar = parse_grammar("   \n\t  ");
+    assert!(grammar.is_ok(), "Whitespace grammar should parse");
+}
+
+#[test]
+fn error_unclosed_charset() {
+    let result = parse_grammar("root: ['a'-'z'.");
+    assert!(result.is_err(), "Unclosed charset should fail");
+}
+
+#[test]
+fn error_unclosed_group() {
+    let result = parse_grammar("root: ('a'.");
+    assert!(result.is_err(), "Unclosed group should fail");
+}
+
+// ── Character class edge cases ──────────────────────────────────────
+
+#[test]
+fn unicode_lowercase_letter_class() {
+    let grammar = "root: [Ll]+.";
+    let xml = parse_to_xml(grammar, "abc").unwrap();
+    assert!(xml.contains("abc"), "Ll class failed: {xml}");
+}
+
+#[test]
+fn unicode_uppercase_letter_class() {
+    let grammar = "root: [Lu]+.";
+    let xml = parse_to_xml(grammar, "ABC").unwrap();
+    assert!(xml.contains("ABC"), "Lu class failed: {xml}");
+}
+
+#[test]
+fn unicode_space_separator_class() {
+    let grammar = "root: [Zs]+.";
+    let xml = parse_to_xml(grammar, "   ").unwrap();
+    assert!(xml.contains("   "), "Zs class failed: {xml}");
+}
+
+#[test]
+fn unicode_currency_symbol_class() {
+    let grammar = "root: [Sc]+.";
+    let xml = parse_to_xml(grammar, "$").unwrap();
+    assert!(xml.contains('$'), "Sc class failed: {xml}");
+}
+
+#[test]
+fn unicode_connector_punctuation_class() {
+    let grammar = "root: [Pc]+.";
+    let xml = parse_to_xml(grammar, "_").unwrap();
+    assert!(xml.contains('_'), "Pc class failed: {xml}");
+}
+
+#[test]
+fn unicode_math_symbol_class() {
+    let grammar = "root: [Sm]+.";
+    let xml = parse_to_xml(grammar, "+").unwrap();
+    assert!(xml.contains('+'), "Sm class failed: {xml}");
+}
+
+#[test]
+fn unicode_punctuation_class() {
+    let grammar = "root: [P]+.";
+    let json = parse_to_json(grammar, ".,!?").unwrap();
+    assert!(json.contains(".,!?"), "P class failed: {json}");
+}
+
+#[test]
+fn hex_range_in_charset() {
+    let grammar = "root: [#41-#5A]+.";
+    let xml = parse_to_xml(grammar, "HELLO").unwrap();
+    assert!(xml.contains("HELLO"), "Hex range failed: {xml}");
+}
+
+#[test]
+fn hex_range_digits_in_charset() {
+    let grammar = "root: [#30-#39]+.";
+    let xml = parse_to_xml(grammar, "12345").unwrap();
+    assert!(xml.contains("12345"), "Hex digit range failed: {xml}");
+}
+
+#[test]
+fn exclusion_with_unicode_class() {
+    let grammar = "root: ~[L]+.";
+    let json = parse_to_json(grammar, "123!@#").unwrap();
+    assert!(json.contains("123!@#"), "Exclusion ~[L] failed: {json}");
+}
+
+#[test]
+fn unknown_unicode_category_no_match() {
+    let grammar = "root: [Xx]+.";
+    let result = parse_to_json(grammar, "a");
+    assert!(result.is_err(), "Unknown category Xx should match nothing");
+}
+
+#[test]
+fn charset_mixed_class_and_range() {
+    let grammar = r#"root: [Ll; "0"-"9"]+."#;
+    let xml = parse_to_xml(grammar, "abc123").unwrap();
+    assert!(
+        xml.contains("abc123"),
+        "Mixed class+range charset failed: {xml}"
+    );
+}
+
+#[test]
+fn marked_hex_literal_hidden() {
+    let grammar = "root: word, -#20, word.\nword: ['a'-'z']+.";
+    let xml = parse_to_xml(grammar, "hello world").unwrap();
+    assert!(
+        xml.contains("<word>hello</word>"),
+        "First word missing: {xml}"
+    );
+    assert!(
+        xml.contains("<word>world</word>"),
+        "Second word missing: {xml}"
+    );
+    assert!(!xml.contains(" </"), "Space should be hidden: {xml}");
 }
