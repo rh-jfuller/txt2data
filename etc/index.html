@@ -226,6 +226,13 @@ txt2data -g format.ixml -i data.txt -f xml</code></pre>
         <tr><td><code>-V, --version</code></td><td>Show version</td></tr>
       </table>
 
+      <h3>Environment variables</h3>
+      <table>
+        <tr><th>Variable</th><th>Default</th><th>Description</th></tr>
+        <tr><td><code>TXT2DATA_MAX_GRAMMAR</code></td><td>1048576 (1 MB)</td><td>Max grammar size in bytes</td></tr>
+        <tr><td><code>TXT2DATA_MAX_INPUT</code></td><td>10485760 (10 MB)</td><td>Max input size in bytes</td></tr>
+      </table>
+
       <h3>Grammar syntax</h3>
       <p>Rules are <code>name: definition.</code> -- a name, colon, body, period.</p>
       <table>
