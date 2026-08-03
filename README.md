@@ -1,6 +1,11 @@
 # txt2data
 
+[![CI](https://github.com/rh-jfuller/txt2data/actions/workflows/ci.yml/badge.svg)](https://github.com/rh-jfuller/txt2data/actions/workflows/ci.yml)
+[![Pages](https://github.com/rh-jfuller/txt2data/actions/workflows/pages.yml/badge.svg)](https://github.com/rh-jfuller/txt2data/actions/workflows/pages.yml)
+
 Describe your text format with a grammar. Get back JSON, XML, YAML, or SQL.
+
+**[Try it in your browser](https://rh-jfuller.github.io/txt2data/)** -- no install needed.
 
 ![CLI usage](docs/ss-cli.png)
 
