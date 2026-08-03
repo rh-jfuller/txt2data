@@ -29,7 +29,7 @@ cargo install txt2data
 From source:
 
 ```sh
-git clone https://github.com/jfuller/txt2data && cd txt2data
+git clone https://github.com/rh-jfuller/txt2data && cd txt2data
 make release && make install
 ```
 
@@ -197,7 +197,10 @@ community spec for describing text formats as grammars.
 
 ## WASM
 
-Compiles to WebAssembly. Build and try it:
+Compiles to WebAssembly.
+**[Live demo](https://rh-jfuller.github.io/txt2data/)** -- try it in your browser, no install needed.
+
+Build and run locally:
 
 ```sh
 make serve   # builds wasm, serves etc/ on :8080
