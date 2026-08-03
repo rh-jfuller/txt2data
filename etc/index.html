@@ -265,6 +265,48 @@ txt2data -g format.ixml -i data.txt -f xml</code></pre>
     </div>
   </details>
 
+  <details>
+    <summary>Rust Library Usage</summary>
+    <div class="cli-body">
+      <h3>Add dependency</h3>
+<pre><code>cargo add txt2data</code></pre>
+
+      <h3>Parse to JSON</h3>
+<pre><code>use txt2data::parse_to_json;
+
+let grammar = r#"
+    row: name, -",", age.
+    name: ["a"-"z"]+.
+    age:  ["0"-"9"]+.
+"#;
+
+let json = parse_to_json(grammar, "alice,30").unwrap();
+// {"name":{"#text":"alice"},"age":{"#text":"30"}}</code></pre>
+
+      <h3>Other formats</h3>
+<pre><code>use txt2data::{parse_to_xml, parse_to_yaml, parse_to_sql};
+
+let xml  = parse_to_xml(grammar, input).unwrap();
+let yaml = parse_to_yaml(grammar, input).unwrap();
+let sql  = parse_to_sql(grammar, input).unwrap();</code></pre>
+
+      <h3>Lower-level API</h3>
+<pre><code>use txt2data::{parse_grammar, Parser, to_json};
+
+let grammar = parse_grammar(src).unwrap();
+let parser = Parser::new(&grammar);
+let tree = parser.parse(input).unwrap();
+let json = to_json(&tree);</code></pre>
+
+      <h3>Environment variables</h3>
+      <table>
+        <tr><th>Variable</th><th>Default</th><th>Description</th></tr>
+        <tr><td><code>TXT2DATA_MAX_GRAMMAR</code></td><td>1048576 (1 MB)</td><td>Max grammar size in bytes</td></tr>
+        <tr><td><code>TXT2DATA_MAX_INPUT</code></td><td>10485760 (10 MB)</td><td>Max input size in bytes</td></tr>
+      </table>
+    </div>
+  </details>
+
   <footer>
     <a href="https://github.com/rh-jfuller/txt2data">Source on GitHub</a>
   </footer>
