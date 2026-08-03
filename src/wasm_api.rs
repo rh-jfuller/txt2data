@@ -24,3 +24,9 @@ pub fn wasm_parse_to_yaml(grammar: &str, input: &str) -> Result<String, JsValue>
 pub fn wasm_parse_to_sql(grammar: &str, input: &str) -> Result<String, JsValue> {
     crate::parse_to_sql(grammar, input).map_err(|e| JsValue::from_str(&e))
 }
+
+#[cfg(feature = "wasm")]
+#[wasm_bindgen]
+pub fn wasm_parse_to_sexp(grammar: &str, input: &str) -> Result<String, JsValue> {
+    crate::parse_to_sexp(grammar, input).map_err(|e| JsValue::from_str(&e))
+}

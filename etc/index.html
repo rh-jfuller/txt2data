@@ -189,6 +189,7 @@
       <option value="xml">XML</option>
       <option value="yaml">YAML</option>
       <option value="sql">SQL</option>
+      <option value="sexp">S-exp</option>
     </select>
   </div>
   <div id="error"></div>
@@ -317,6 +318,7 @@ let json = to_json(&tree);</code></pre>
       wasm_parse_to_xml,
       wasm_parse_to_yaml,
       wasm_parse_to_sql,
+      wasm_parse_to_sexp,
     } from "./pkg/txt2data.js";
 
     const examples = {
@@ -399,6 +401,7 @@ version: "HTTP/", digit, -".", digit.
       xml: wasm_parse_to_xml,
       yaml: wasm_parse_to_yaml,
       sql: wasm_parse_to_sql,
+      sexp: wasm_parse_to_sexp,
     };
 
     document.getElementById("parse").addEventListener("click", () => {

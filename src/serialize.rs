@@ -1,4 +1,4 @@
-/// Parse tree -> JSON, XML, YAML, or SQL INSERT.
+/// Parse tree -> JSON, XML, YAML, SQL INSERT, or S-expression.
 use std::fmt::Write;
 
 use crate::ast::Mark;
@@ -53,6 +53,108 @@ pub fn to_sql(tree: &ParseTree) -> String {
     let mut buf = String::with_capacity(256);
     serialize_sql(&tree.root, &mut buf);
     buf
+}
+
+#[must_use]
+pub fn to_sexp(tree: &ParseTree) -> String {
+    let mut buf = String::with_capacity(256);
+    serialize_sexp_node(&tree.root, &mut buf, 0);
+    buf.push('\n');
+    buf
+}
+
+fn serialize_sexp_node(node: &TreeNode, buf: &mut String, depth: usize) {
+    match node {
+        TreeNode::Text { mark, value } => {
+            if *mark != Mark::Hidden && !value.is_empty() {
+                let indent = "  ".repeat(depth);
+                let _ = writeln!(buf, "{indent}{}", sexp_quote(value));
+            }
+        }
+        TreeNode::Insertion { value } => {
+            if !value.is_empty() {
+                let indent = "  ".repeat(depth);
+                let _ = writeln!(buf, "{indent}{}", sexp_quote(value));
+            }
+        }
+        TreeNode::Element {
+            mark,
+            name,
+            children,
+        } => match mark {
+            Mark::Hidden => {
+                // Promote visible named children; drop bare text.
+                for child in children {
+                    if let TreeNode::Element {
+                        mark: Mark::None | Mark::Element | Mark::Attribute,
+                        ..
+                    } = child
+                    {
+                        serialize_sexp_node(child, buf, depth);
+                    }
+                }
+            }
+            Mark::Attribute => {
+                let text = collect_text(node);
+                let indent = "  ".repeat(depth);
+                let _ = writeln!(buf, "{indent}(@{name} {})", sexp_quote(&text));
+            }
+            Mark::None | Mark::Element => {
+                let indent = "  ".repeat(depth);
+                let attrs = collect_attributes(children);
+                let non_attr: Vec<&TreeNode> = children
+                    .iter()
+                    .filter(|c| {
+                        has_visible_content(c)
+                            && !matches!(
+                                c,
+                                TreeNode::Element {
+                                    mark: Mark::Attribute,
+                                    ..
+                                }
+                            )
+                    })
+                    .collect();
+                let text_only = attrs.is_empty() && non_attr.iter().all(|c| is_text_like(c));
+                if text_only {
+                    let text = collect_text(node);
+                    let _ = writeln!(buf, "{indent}({name} {})", sexp_quote(&text));
+                } else {
+                    let _ = writeln!(buf, "{indent}({name}");
+                    for (aname, aval) in &attrs {
+                        let inner = "  ".repeat(depth + 1);
+                        let _ = writeln!(buf, "{inner}(@{aname} {})", sexp_quote(aval));
+                    }
+                    for child in &non_attr {
+                        serialize_sexp_node(child, buf, depth + 1);
+                    }
+                    let _ = writeln!(buf, "{indent})");
+                }
+            }
+        },
+    }
+}
+
+fn sexp_quote(s: &str) -> String {
+    let needs_quote = s.is_empty()
+        || s.contains(|c: char| c.is_whitespace() || c == '(' || c == ')' || c == '"' || c == '\\');
+    if needs_quote {
+        let mut buf = String::with_capacity(s.len() + 2);
+        buf.push('"');
+        for ch in s.chars() {
+            match ch {
+                '\\' => buf.push_str("\\\\"),
+                '"' => buf.push_str("\\\""),
+                '\n' => buf.push_str("\\n"),
+                '\t' => buf.push_str("\\t"),
+                _ => buf.push(ch),
+            }
+        }
+        buf.push('"');
+        buf
+    } else {
+        s.to_string()
+    }
 }
 
 fn serialize_xml_node(node: &TreeNode, buf: &mut String, depth: usize) {
