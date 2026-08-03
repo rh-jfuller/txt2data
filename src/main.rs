@@ -27,7 +27,7 @@ struct Cli {
         short,
         long,
         default_value = "json",
-        value_parser = ["json", "xml", "yaml", "sql"]
+        value_parser = ["json", "xml", "yaml", "sql", "sexp"]
     )]
     format: String,
 }
@@ -87,6 +87,7 @@ fn run(cli: &Cli) -> Result<String, String> {
         "xml" => txt2data::parse_to_xml(&grammar_src, &input),
         "yaml" => txt2data::parse_to_yaml(&grammar_src, &input),
         "sql" => txt2data::parse_to_sql(&grammar_src, &input),
+        "sexp" => txt2data::parse_to_sexp(&grammar_src, &input),
         _ => txt2data::parse_to_json(&grammar_src, &input),
     }
 }

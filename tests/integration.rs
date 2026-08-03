@@ -1,6 +1,8 @@
 #![expect(clippy::unwrap_used)]
 
-use txt2data::{parse_grammar, parse_to_json, parse_to_sql, parse_to_xml, parse_to_yaml};
+use txt2data::{
+    parse_grammar, parse_to_json, parse_to_sexp, parse_to_sql, parse_to_xml, parse_to_yaml,
+};
 
 // ── Grammar parsing edge cases ──────────────────────────────────────
 
@@ -934,4 +936,90 @@ fn marked_hex_literal_hidden() {
         "Second word missing: {xml}"
     );
     assert!(!xml.contains(" </"), "Space should be hidden: {xml}");
+}
+
+// ── S-expression output ─────────────────────────────────────────────
+
+#[test]
+fn sexp_simple() {
+    let grammar = r#"
+        row: name, -",", age.
+        name: ["a"-"z"]+.
+        age: ["0"-"9"]+.
+    "#;
+    let sexp = parse_to_sexp(grammar, "alice,30").unwrap();
+    assert!(sexp.contains("(name alice)"), "Missing name: {sexp}");
+    assert!(sexp.contains("(age 30)"), "Missing age: {sexp}");
+}
+
+#[test]
+fn sexp_nested() {
+    let grammar = r#"
+        doc: section.
+        section: title, body.
+        title: ["A"-"Z"]+.
+        body: ["a"-"z"]+.
+    "#;
+    let sexp = parse_to_sexp(grammar, "HELLOworld").unwrap();
+    assert!(sexp.contains("(section"), "Missing section: {sexp}");
+    assert!(sexp.contains("(title HELLO)"), "Missing title: {sexp}");
+    assert!(sexp.contains("(body world)"), "Missing body: {sexp}");
+}
+
+#[test]
+fn sexp_attributes() {
+    let grammar = r#"
+        decl: @prop, -":", @val.
+        @prop: ["a"-"z"]+.
+        @val: ["a"-"z"; "0"-"9"]+.
+    "#;
+    let sexp = parse_to_sexp(grammar, "width:100px").unwrap();
+    assert!(
+        sexp.contains("(@prop width)"),
+        "Missing attribute prop: {sexp}"
+    );
+    assert!(
+        sexp.contains("(@val 100px)"),
+        "Missing attribute val: {sexp}"
+    );
+}
+
+#[test]
+fn sexp_repeated() {
+    let grammar = r#"
+        csv: row+.
+        row: name, -",", age, -nl?.
+        name: ["a"-"z"]+.
+        age: ["0"-"9"]+.
+        -nl: #0A.
+    "#;
+    let sexp = parse_to_sexp(grammar, "alice,30\nbob,42").unwrap();
+    assert!(sexp.contains("(csv"), "Missing csv: {sexp}");
+    assert!(sexp.contains("(name alice)"), "Missing alice: {sexp}");
+    assert!(sexp.contains("(name bob)"), "Missing bob: {sexp}");
+    // Hidden newline should not leak.
+    assert!(!sexp.contains("\\n"), "Hidden newline leaked: {sexp}");
+}
+
+#[test]
+fn sexp_quoting_special_chars() {
+    let grammar = "root: val.\nval: ~[]+.";
+    let sexp = parse_to_sexp(grammar, "hello world").unwrap();
+    assert!(
+        sexp.contains("\"hello world\""),
+        "Space should trigger quoting: {sexp}"
+    );
+}
+
+#[test]
+fn sexp_hidden_separator() {
+    let grammar = r#"
+        pair: key, -"=", value.
+        key: ["a"-"z"]+.
+        value: ["a"-"z"]+.
+    "#;
+    let sexp = parse_to_sexp(grammar, "foo=bar").unwrap();
+    assert!(sexp.contains("(key foo)"), "Missing key: {sexp}");
+    assert!(sexp.contains("(value bar)"), "Missing value: {sexp}");
+    assert!(!sexp.contains('='), "Separator leaked: {sexp}");
 }

@@ -7,7 +7,7 @@ mod serialize;
 pub use ast::{Grammar, Mark, Rule};
 pub use earley::Parser;
 pub use grammar::parse_grammar;
-pub use serialize::{ParseTree, TreeNode, to_json, to_sql, to_xml, to_yaml};
+pub use serialize::{ParseTree, TreeNode, to_json, to_sexp, to_sql, to_xml, to_yaml};
 
 const DEFAULT_MAX_GRAMMAR: usize = 1_024 * 1_024;
 const DEFAULT_MAX_INPUT: usize = 10 * 1_024 * 1_024;
@@ -99,6 +99,22 @@ pub fn parse_to_sql(grammar_src: &str, input: &str) -> Result<String, String> {
         .parse(input)
         .map_err(|e| format!("Parse error: {e}"))?;
     Ok(to_sql(&tree))
+}
+
+/// Grammar + input -> S-expression string.
+///
+/// # Errors
+///
+/// Returns error if grammar is invalid, input doesn't match,
+/// or either exceeds size limits.
+pub fn parse_to_sexp(grammar_src: &str, input: &str) -> Result<String, String> {
+    check_limits(grammar_src, input)?;
+    let grammar = parse_grammar(grammar_src).map_err(|e| format!("Grammar error: {e}"))?;
+    let parser = Parser::new(&grammar);
+    let tree = parser
+        .parse(input)
+        .map_err(|e| format!("Parse error: {e}"))?;
+    Ok(to_sexp(&tree))
 }
 
 #[cfg(feature = "wasm")]

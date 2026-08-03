@@ -3,7 +3,7 @@
 [![CI](https://github.com/rh-jfuller/txt2data/actions/workflows/ci.yml/badge.svg)](https://github.com/rh-jfuller/txt2data/actions/workflows/ci.yml)
 [![Pages](https://github.com/rh-jfuller/txt2data/actions/workflows/pages.yml/badge.svg)](https://github.com/rh-jfuller/txt2data/actions/workflows/pages.yml)
 
-Describe your text with a grammar. Get back JSON, XML, YAML, or SQL.
+Describe your text with a grammar. Get back JSON, XML, YAML, SQL, or S-expressions.
 
 **[Try it in your browser](https://rh-jfuller.github.io/txt2data/)** -- no install needed.
 
@@ -141,13 +141,22 @@ INSERT INTO "csv" ("name", "age") VALUES ('alice', '30');
 INSERT INTO "csv" ("name", "age") VALUES ('bob', '42');
 ```
 
+**S-expression** `-f sexp`
+
+```lisp
+(row
+  (name alice)
+  (age 30)
+)
+```
+
 ## How it works
 
 1. **Parse** -- recursive descent on ixml notation
 2. **Normalize** -- desugar `+`/`*`/`?` into BNF
 3. **Earley parse** -- handles any context-free grammar
 4. **Extract tree** -- greedy iteration + memoized backtracking
-5. **Serialize** -- emit JSON, XML, YAML, or SQL
+5. **Serialize** -- emit JSON, XML, YAML, SQL, or S-expression
 
 Grammar notation: [Invisible XML](https://invisiblexml.org/), a W3C community spec.
 
@@ -176,7 +185,7 @@ txt2data [OPTIONS]
   -g, --grammar <FILE>    Grammar file
   -e, --expr <GRAMMAR>    Inline grammar
   -i, --input <FILE>      Input file (default: stdin)
-  -f, --format <FORMAT>   json (default), xml, yaml, sql
+  -f, --format <FORMAT>   json (default), xml, yaml, sql, sexp
   -h, --help
   -V, --version
 ```
