@@ -1,0 +1,7 @@
+csv: row+.
+row: name, -",", age, -nl?.
+name: char+.
+age: digit+.
+-char: ["a"-"z"; "A"-"Z"].
+-digit: ["0"-"9"].
+-nl: #0A.

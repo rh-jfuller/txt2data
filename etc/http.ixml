@@ -1,0 +1,8 @@
+request: method, -" ", path, -" ", version.
+method: upper+.
+path: "/", segment.
+segment: pchar+.
+version: "HTTP/", digit, -".", digit.
+-upper: ["A"-"Z"].
+-pchar: ["a"-"z"; "/"].
+-digit: ["0"-"9"].

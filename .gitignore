@@ -1,0 +1,5 @@
+/target
+/pkg
+/etc/pkg
+*.wasm
+Cargo.lock

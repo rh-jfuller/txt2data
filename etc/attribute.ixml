@@ -1,0 +1,5 @@
+decl: @prop, -":", @val.
+@prop: letter+.
+@val: vchar+.
+-letter: ["a"-"z"].
+-vchar: ["a"-"z"; "0"-"9"].

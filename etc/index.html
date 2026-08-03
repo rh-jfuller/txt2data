@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>txt2data</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 64rem;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      color: #1a1a1a;
+      background: #fafafa;
+    }
+    h1 { margin-bottom: 0.5rem; }
+    p.subtitle { color: #555; margin-bottom: 1.5rem; }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    label { font-weight: 600; display: block; margin-bottom: 0.25rem; }
+    textarea {
+      width: 100%;
+      font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+      font-size: 0.875rem;
+      padding: 0.75rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      resize: vertical;
+      background: #fff;
+    }
+    textarea:focus { outline: 2px solid #2563eb; border-color: transparent; }
+    .controls { margin: 1rem 0; display: flex; gap: 0.75rem; align-items: center; }
+    button {
+      padding: 0.5rem 1.25rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      background: #2563eb;
+      color: #fff;
+    }
+    button:hover { background: #1d4ed8; }
+    select {
+      padding: 0.4rem 0.5rem;
+      font-size: 0.875rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    #output {
+      min-height: 10rem;
+      background: #1e1e1e;
+      color: #d4d4d4;
+      border-color: #333;
+    }
+    #error { color: #dc2626; margin-top: 0.5rem; font-size: 0.875rem; }
+  </style>
+</head>
+<body>
+  <h1>txt2data</h1>
+  <p class="subtitle">Turn any text into structured JSON or XML using Earley (ixml) grammars.</p>
+
+  <div class="grid">
+    <div>
+      <label for="grammar">Grammar</label>
+      <textarea id="grammar" rows="10">csv: row+.
+row: name, -",", age, -nl?.
+name: char+.
+age: digit+.
+-char: ["a"-"z"; "A"-"Z"].
+-digit: ["0"-"9"].
+-nl: #0A.</textarea>
+    </div>
+    <div>
+      <label for="input">Input</label>
+      <textarea id="input" rows="10">alice,30
+bob,42</textarea>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button id="parse">Parse</button>
+    <select id="format">
+      <option value="json" selected>JSON</option>
+      <option value="xml">XML</option>
+      <option value="yaml">YAML</option>
+      <option value="sql">SQL</option>
+    </select>
+  </div>
+  <div id="error"></div>
+
+  <label for="output">Output</label>
+  <textarea id="output" rows="12" readonly></textarea>
+
+  <script type="module">
+    import init, {
+      wasm_parse_to_json,
+      wasm_parse_to_xml,
+      wasm_parse_to_yaml,
+      wasm_parse_to_sql,
+    } from "./pkg/txt2data.js";
+
+    await init();
+
+    const parsers = {
+      json: wasm_parse_to_json,
+      xml: wasm_parse_to_xml,
+      yaml: wasm_parse_to_yaml,
+      sql: wasm_parse_to_sql,
+    };
+
+    document.getElementById("parse").addEventListener("click", () => {
+      const grammar = document.getElementById("grammar").value;
+      const input = document.getElementById("input").value;
+      const format = document.getElementById("format").value;
+      const errorEl = document.getElementById("error");
+      const outputEl = document.getElementById("output");
+
+      errorEl.textContent = "";
+      outputEl.value = "";
+
+      try {
+        outputEl.value = parsers[format](grammar, input);
+      } catch (e) {
+        errorEl.textContent = String(e);
+      }
+    });
+  </script>
+</body>
+</html>

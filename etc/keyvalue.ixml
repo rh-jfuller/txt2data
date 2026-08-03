@@ -1,0 +1,4 @@
+pair: key, -"=", value.
+key: letter+.
+value: letter+.
+-letter: ["a"-"z"].
