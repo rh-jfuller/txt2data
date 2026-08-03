@@ -14,14 +14,21 @@
       color: #1a1a1a;
       background: #fafafa;
     }
-    h1 { margin-bottom: 0.5rem; }
+    h1 { margin-bottom: 0.25rem; }
     p.subtitle { color: #555; margin-bottom: 1.5rem; }
+    a { color: #2563eb; }
     .grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 1rem;
     }
-    label { font-weight: 600; display: block; margin-bottom: 0.25rem; }
+    .label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 0.25rem;
+    }
+    label { font-weight: 600; }
     textarea {
       width: 100%;
       font-family: "SF Mono", "Fira Code", "Consolas", monospace;
@@ -32,8 +39,16 @@
       resize: vertical;
       background: #fff;
     }
-    textarea:focus { outline: 2px solid #2563eb; border-color: transparent; }
-    .controls { margin: 1rem 0; display: flex; gap: 0.75rem; align-items: center; }
+    textarea:focus {
+      outline: 2px solid #2563eb;
+      border-color: transparent;
+    }
+    .controls {
+      margin: 1rem 0;
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+    }
     button {
       padding: 0.5rem 1.25rem;
       font-size: 0.875rem;
@@ -50,6 +65,7 @@
       font-size: 0.875rem;
       border: 1px solid #ccc;
       border-radius: 4px;
+      background: #fff;
     }
     #output {
       min-height: 10rem;
@@ -57,28 +73,112 @@
       color: #d4d4d4;
       border-color: #333;
     }
-    #error { color: #dc2626; margin-top: 0.5rem; font-size: 0.875rem; }
+    #error {
+      color: #dc2626;
+      margin-top: 0.5rem;
+      font-size: 0.875rem;
+    }
+    .example-hint {
+      font-size: 0.8rem;
+      color: #666;
+    }
+    footer {
+      margin-top: 2rem;
+      padding-top: 1rem;
+      border-top: 1px solid #ddd;
+      font-size: 0.8rem;
+      color: #888;
+    }
+    details {
+      margin-top: 2rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background: #fff;
+    }
+    summary {
+      padding: 0.75rem 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      user-select: none;
+    }
+    summary:hover { background: #f5f5f5; }
+    .cli-body {
+      padding: 0 1rem 1rem;
+      font-size: 0.875rem;
+      line-height: 1.6;
+    }
+    .cli-body h3 {
+      font-size: 0.9rem;
+      margin: 1rem 0 0.25rem;
+    }
+    .cli-body pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 0.75rem;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+      font-size: 0.8rem;
+      line-height: 1.5;
+    }
+    .cli-body code {
+      font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+      background: #eee;
+      padding: 0.1rem 0.3rem;
+      border-radius: 3px;
+      font-size: 0.8rem;
+    }
+    .cli-body pre code {
+      background: none;
+      padding: 0;
+    }
+    .cli-body p { margin: 0.5rem 0; }
+    .cli-body table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0.5rem 0;
+      font-size: 0.8rem;
+    }
+    .cli-body th, .cli-body td {
+      text-align: left;
+      padding: 0.35rem 0.75rem;
+      border-bottom: 1px solid #eee;
+    }
+    .cli-body th {
+      font-weight: 600;
+      background: #f9f9f9;
+    }
   </style>
 </head>
 <body>
   <h1>txt2data</h1>
-  <p class="subtitle">Turn any text into structured JSON or XML using Earley (ixml) grammars.</p>
+  <p class="subtitle">
+    Turn any text into structured data using Earley (<a href="https://invisiblexml.org/">ixml</a>) grammars.
+  </p>
 
   <div class="grid">
     <div>
-      <label for="grammar">Grammar</label>
-      <textarea id="grammar" rows="10">csv: row+.
-row: name, -",", age, -nl?.
-name: char+.
-age: digit+.
--char: ["a"-"z"; "A"-"Z"].
--digit: ["0"-"9"].
--nl: #0A.</textarea>
+      <div class="label-row">
+        <label for="grammar">Grammar</label>
+        <span class="example-hint">
+          Example:
+          <select id="example">
+            <option value="csv">CSV</option>
+            <option value="greeting">Greeting</option>
+            <option value="keyvalue">Key-Value</option>
+            <option value="date">Date</option>
+            <option value="http">HTTP Request</option>
+            <option value="attribute">Attribute Marks</option>
+          </select>
+        </span>
+      </div>
+      <textarea id="grammar" rows="12"></textarea>
     </div>
     <div>
-      <label for="input">Input</label>
-      <textarea id="input" rows="10">alice,30
-bob,42</textarea>
+      <div class="label-row">
+        <label for="input">Input</label>
+      </div>
+      <textarea id="input" rows="12"></textarea>
     </div>
   </div>
 
@@ -96,6 +196,72 @@ bob,42</textarea>
   <label for="output">Output</label>
   <textarea id="output" rows="12" readonly></textarea>
 
+  <details>
+    <summary>CLI Usage</summary>
+    <div class="cli-body">
+      <h3>Install</h3>
+<pre><code>cargo install txt2data</code></pre>
+      <p>Or build from source:</p>
+<pre><code>git clone https://github.com/rh-jfuller/txt2data && cd txt2data
+make release && make install</code></pre>
+
+      <h3>Quick start</h3>
+<pre><code># inline grammar, stdin input
+printf 'alice,30' | txt2data -e 'row: name, -",", age. name: ["a"-"z"]+. age: ["0"-"9"]+.'
+
+# grammar file, input file
+txt2data -g format.ixml -i data.txt
+
+# choose output format
+txt2data -g format.ixml -i data.txt -f xml</code></pre>
+
+      <h3>Options</h3>
+      <table>
+        <tr><th>Flag</th><th>Description</th></tr>
+        <tr><td><code>-g, --grammar &lt;FILE&gt;</code></td><td>Grammar file</td></tr>
+        <tr><td><code>-e, --expr &lt;GRAMMAR&gt;</code></td><td>Inline grammar</td></tr>
+        <tr><td><code>-i, --input &lt;FILE&gt;</code></td><td>Input file (default: stdin)</td></tr>
+        <tr><td><code>-f, --format &lt;FORMAT&gt;</code></td><td>json (default), xml, yaml, sql</td></tr>
+        <tr><td><code>-h, --help</code></td><td>Show help</td></tr>
+        <tr><td><code>-V, --version</code></td><td>Show version</td></tr>
+      </table>
+
+      <h3>Grammar syntax</h3>
+      <p>Rules are <code>name: definition.</code> -- a name, colon, body, period.</p>
+      <table>
+        <tr><th>Syntax</th><th>Meaning</th></tr>
+        <tr><td><code>"text"</code></td><td>Literal</td></tr>
+        <tr><td><code>["a"-"z"]</code></td><td>Character range</td></tr>
+        <tr><td><code>["abc"]</code></td><td>Character set</td></tr>
+        <tr><td><code>[Ll]</code></td><td>Unicode category</td></tr>
+        <tr><td><code>~[" "]</code></td><td>Exclusion (anything except)</td></tr>
+        <tr><td><code>a, b</code></td><td>Sequence</td></tr>
+        <tr><td><code>a; b</code></td><td>Alternative</td></tr>
+        <tr><td><code>x+</code></td><td>One or more</td></tr>
+        <tr><td><code>x*</code></td><td>Zero or more</td></tr>
+        <tr><td><code>x?</code></td><td>Optional</td></tr>
+        <tr><td><code>-x</code></td><td>Hidden (match but omit)</td></tr>
+        <tr><td><code>@x</code></td><td>Attribute (flat string)</td></tr>
+        <tr><td><code>+"text"</code></td><td>Insertion (output only)</td></tr>
+        <tr><td><code>#0A</code></td><td>Hex codepoint</td></tr>
+      </table>
+
+      <h3>Marks</h3>
+      <p>Marks control output shape:</p>
+      <table>
+        <tr><th>Mark</th><th>Effect</th></tr>
+        <tr><td>(none)</td><td>Nested object (JSON) or element (XML)</td></tr>
+        <tr><td><code>-</code></td><td>Matched but hidden; children promoted up</td></tr>
+        <tr><td><code>@</code></td><td>Flat string property / XML attribute</td></tr>
+        <tr><td><code>^</code></td><td>Explicitly an element</td></tr>
+      </table>
+    </div>
+  </details>
+
+  <footer>
+    <a href="https://github.com/rh-jfuller/txt2data">Source on GitHub</a>
+  </footer>
+
   <script type="module">
     import init, {
       wasm_parse_to_json,
@@ -103,6 +269,79 @@ bob,42</textarea>
       wasm_parse_to_yaml,
       wasm_parse_to_sql,
     } from "./pkg/txt2data.js";
+
+    const examples = {
+      csv: {
+        grammar: `csv: row+.
+row: name, -",", age, -nl?.
+name: char+.
+age: digit+.
+-char: ["a"-"z"; "A"-"Z"].
+-digit: ["0"-"9"].
+-nl: #0A.`,
+        input: `alice,30\nbob,42`,
+      },
+      greeting: {
+        grammar: `greeting: "Hello, ", name, -"!".
+name: letter+.
+-letter: ["a"-"z"; "A"-"Z"].`,
+        input: `Hello, World!`,
+      },
+      keyvalue: {
+        grammar: `pair: key, -"=", value.
+key: letter+.
+value: letter+.
+-letter: ["a"-"z"].`,
+        input: `foo=bar`,
+      },
+      date: {
+        grammar: `date: year, -"-", month, -"-", day.
+year: digit, digit, digit, digit.
+month: digit, digit.
+day: digit, digit.
+-digit: ["0"-"9"].`,
+        input: `2026-08-03`,
+      },
+      http: {
+        grammar: `request: method, -" ", path, -" ", version.
+method: upper+.
+path: "/", segment.
+segment: pchar+.
+version: "HTTP/", digit, -".", digit.
+-upper: ["A"-"Z"].
+-pchar: ["a"-"z"; "/"].
+-digit: ["0"-"9"].`,
+        input: `GET /api/users HTTP/1.1`,
+      },
+      attribute: {
+        grammar: `decl: @prop, -":", @val.
+@prop: letter+.
+@val: vchar+.
+-letter: ["a"-"z"].
+-vchar: ["a"-"z"; "0"-"9"].`,
+        input: `width:100px`,
+      },
+    };
+
+    const grammarEl = document.getElementById("grammar");
+    const inputEl = document.getElementById("input");
+    const exampleEl = document.getElementById("example");
+    const errorEl = document.getElementById("error");
+    const outputEl = document.getElementById("output");
+
+    function loadExample(name) {
+      const ex = examples[name];
+      grammarEl.value = ex.grammar;
+      inputEl.value = ex.input;
+      errorEl.textContent = "";
+      outputEl.value = "";
+    }
+
+    exampleEl.addEventListener("change", () => {
+      loadExample(exampleEl.value);
+    });
+
+    loadExample("csv");
 
     await init();
 
@@ -114,11 +353,9 @@ bob,42</textarea>
     };
 
     document.getElementById("parse").addEventListener("click", () => {
-      const grammar = document.getElementById("grammar").value;
-      const input = document.getElementById("input").value;
+      const grammar = grammarEl.value;
+      const input = inputEl.value;
       const format = document.getElementById("format").value;
-      const errorEl = document.getElementById("error");
-      const outputEl = document.getElementById("output");
 
       errorEl.textContent = "";
       outputEl.value = "";
