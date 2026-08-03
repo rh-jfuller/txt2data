@@ -313,13 +313,7 @@ let json = to_json(&tree);</code></pre>
   </footer>
 
   <script type="module">
-    import init, {
-      wasm_parse_to_json,
-      wasm_parse_to_xml,
-      wasm_parse_to_yaml,
-      wasm_parse_to_sql,
-      wasm_parse_to_sexp,
-    } from "./pkg/txt2data.js";
+    import init, * as wasm from "./pkg/txt2data.js";
 
     const examples = {
       csv: {
@@ -397,11 +391,11 @@ version: "HTTP/", digit, -".", digit.
     await init();
 
     const parsers = {
-      json: wasm_parse_to_json,
-      xml: wasm_parse_to_xml,
-      yaml: wasm_parse_to_yaml,
-      sql: wasm_parse_to_sql,
-      sexp: wasm_parse_to_sexp,
+      json: wasm.wasm_parse_to_json,
+      xml: wasm.wasm_parse_to_xml,
+      yaml: wasm.wasm_parse_to_yaml,
+      sql: wasm.wasm_parse_to_sql,
+      sexp: wasm.wasm_parse_to_sexp,
     };
 
     document.getElementById("parse").addEventListener("click", () => {
