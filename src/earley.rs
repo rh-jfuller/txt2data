@@ -486,7 +486,7 @@ impl Parser {
         })
     }
 
-    /// Get end positions where a symbol completes starting at `start`.
+    /// End positions where symbol completes from `start`.
     fn completion_ends(ctx: &ExtractCtx<'_>, sym: &Symbol, start: usize) -> Vec<usize> {
         match sym {
             Symbol::Nonterminal { name, .. } => {
