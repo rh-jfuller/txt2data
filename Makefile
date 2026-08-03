@@ -1,4 +1,4 @@
-.PHONY: all build release check test clippy fmt clean install wasm serve
+.PHONY: all build release check test clippy fmt clean install wasm serve publish
 .PHONY: examples example-greeting example-csv example-keyvalue
 .PHONY: example-date example-http example-attribute
 
@@ -34,6 +34,9 @@ clean:
 
 install:
 	$(CARGO) install --path .
+
+publish: check
+	$(CARGO) publish
 
 wasm:
 	wasm-pack build --target web --features wasm --no-default-features
