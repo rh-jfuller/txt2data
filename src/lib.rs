@@ -4,7 +4,7 @@ mod earley;
 mod grammar;
 mod serialize;
 
-pub use ast::{Grammar, Mark, Rule};
+pub use ast::{Alt, CharMember, Grammar, Mark, Rule, Term};
 pub use earley::Parser;
 pub use grammar::parse_grammar;
 pub use serialize::{ParseTree, TreeNode, to_json, to_sexp, to_sql, to_xml, to_yaml};
