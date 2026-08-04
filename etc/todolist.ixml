@@ -1,0 +1,8 @@
+doc: heading, -nl, -nl, list.
+heading: -"# ", @title.
+@title: ~[#0A]+.
+list: item, -more*.
+-more: -nl, item.
+item: -"- ", @text.
+@text: ~[#0A]+.
+-nl: #0A.

@@ -169,6 +169,18 @@
             <option value="date">Date</option>
             <option value="http">HTTP Request</option>
             <option value="attribute">Attribute Marks</option>
+            <option value="email">Email Address</option>
+            <option value="url">URL</option>
+            <option value="hexcolor">Hex Color</option>
+            <option value="semver">Semver</option>
+            <option value="logentry">Log Entry</option>
+            <option value="envfile">Env File</option>
+            <option value="math">Math Expression</option>
+            <option value="ipv4">IPv4 Address</option>
+            <option value="pii">PII Scanner</option>
+            <option value="markdown">Markdown</option>
+            <option value="address">Postal Address</option>
+            <option value="todolist">Todo List</option>
           </select>
         </span>
       </div>
@@ -365,6 +377,138 @@ version: "HTTP/", digit, -".", digit.
 -letter: ["a"-"z"].
 -vchar: ["a"-"z"; "0"-"9"].`,
         input: `width:100px`,
+      },
+      email: {
+        grammar: `email: local, -"@", domain.
+local: lchar+.
+domain: segment, -".", segment.
+segment: dchar+.
+-lchar: ["a"-"z"; "0"-"9"; "."].
+-dchar: ["a"-"z"; "0"-"9"].`,
+        input: `user@example.com`,
+      },
+      url: {
+        grammar: `url: scheme, -"://", host, -"/", path.
+scheme: schar+.
+host: hchar+.
+path: pchar+.
+-schar: ["a"-"z"].
+-hchar: ["a"-"z"; "0"-"9"; "."].
+-pchar: ["a"-"z"; "0"-"9"; "/"].`,
+        input: `https://example.com/api/users`,
+      },
+      hexcolor: {
+        grammar: `color: -"#", red, green, blue.
+red: hex, hex.
+green: hex, hex.
+blue: hex, hex.
+-hex: ["0"-"9"; "a"-"f"].`,
+        input: `#ff8800`,
+      },
+      semver: {
+        grammar: `semver: major, -".", minor, -".", patch, pre?.
+major: digit+.
+minor: digit+.
+patch: digit+.
+pre: -"-", tag.
+tag: tchar+.
+-digit: ["0"-"9"].
+-tchar: ["a"-"z"; "0"-"9"].`,
+        input: `1.24.0-beta`,
+      },
+      logentry: {
+        grammar: `entry: timestamp, -" ", level, -" ", message.
+timestamp: date, -"T", time, -"Z".
+date: year, -"-", month, -"-", day.
+time: hour, -":", minute, -":", second.
+year: d, d, d, d.
+month: d, d.
+day: d, d.
+hour: d, d.
+minute: d, d.
+second: d, d.
+level: upper+.
+message: mchar+.
+-d: ["0"-"9"].
+-upper: ["A"-"Z"].
+-mchar: ~[].`,
+        input: `2026-08-03T14:30:00Z ERROR connection timeout`,
+      },
+      envfile: {
+        grammar: `env: entry+.
+entry: key, -"=", value, -nl?.
+key: kchar+.
+value: vchar+.
+-kchar: ["A"-"Z"; "_"].
+-vchar: ~[#0A].
+-nl: #0A.`,
+        input: `DB_HOST=localhost\nDB_PORT=5432\nDEBUG=true`,
+      },
+      math: {
+        grammar: `expr: term, rest*.
+rest: op, term.
+term: digit+.
+op: ["+"; "-"; "*"; "/"].
+-digit: ["0"-"9"].`,
+        input: `3+42*7`,
+      },
+      ipv4: {
+        grammar: `ipv4: a, -".", b, -".", c, -".", d.
+a: octet.
+b: octet.
+c: octet.
+d: octet.
+octet: digit+.
+-digit: ["0"-"9"].`,
+        input: `192.168.1.100`,
+      },
+      pii: {
+        grammar: `scan: -noise+.
+-noise: ssn; phone; email; -skip.
+ssn: @value.
+@value: d, d, d, "-", d, d, "-", d, d, d, d.
+phone: @number.
+@number: d, d, d, "-", d, d, d, "-", d, d, d, d.
+email: @addr.
+@addr: local, "@", dom.
+-local: ["a"-"z"; "0"-"9"; "."]+.
+-dom: ["a"-"z"; "."]+.
+-skip: ~[].
+-d: ["0"-"9"].`,
+        input: `Please update the account for Jane Doe.\nHer SSN is 123-45-6789 and she can be\nreached at 555-867-5309 or via email\nat jane.doe@acme.com for confirmation.`,
+      },
+      markdown: {
+        grammar: `doc: block, -more*.
+-more: -blank, block.
+block: h1; h2; para.
+h1: -"# ", @text.
+h2: -"## ", @text.
+para: @text.
+@text: ~[#0A]+.
+-blank: #0A, #0A.`,
+        input: `# Title\n\nFirst paragraph here.\n\n## Section\n\nSecond paragraph here.`,
+      },
+      address: {
+        grammar: `address: name, -nl, street, -nl,
+          city, -", ", state, -" ", zip.
+name: ~[#0A]+.
+street: ~[#0A]+.
+city: ~[","; #0A]+.
+state: ["A"-"Z"], ["A"-"Z"].
+zip: ["0"-"9"]+.
+-nl: #0A.`,
+        input: `Jane Doe\n742 Evergreen Terrace\nSpringfield, IL 62704`,
+      },
+      todolist: {
+        grammar: `doc: heading, -nl, -nl, list.
+heading: -"# ", @title.
+@title: ~[#0A]+.
+list: item, -more*.
+-more: -nl, item.
+item: -"- ", @text.
+@text: ~[#0A]+.
+-nl: #0A.`,
+        input: `# Shopping List\n\n- eggs\n- milk\n- bread`,
       },
     };
 

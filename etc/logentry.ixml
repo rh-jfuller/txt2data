@@ -1,0 +1,15 @@
+entry: timestamp, -" ", level, -" ", message.
+timestamp: date, -"T", time, -"Z".
+date: year, -"-", month, -"-", day.
+time: hour, -":", minute, -":", second.
+year: d, d, d, d.
+month: d, d.
+day: d, d.
+hour: d, d.
+minute: d, d.
+second: d, d.
+level: upper+.
+message: mchar+.
+-d: ["0"-"9"].
+-upper: ["A"-"Z"].
+-mchar: ~[].

@@ -1,0 +1,7 @@
+url: scheme, -"://", host, -"/", path.
+scheme: schar+.
+host: hchar+.
+path: pchar+.
+-schar: ["a"-"z"].
+-hchar: ["a"-"z"; "0"-"9"; "."].
+-pchar: ["a"-"z"; "0"-"9"; "/"].

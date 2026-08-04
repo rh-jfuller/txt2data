@@ -1,0 +1,6 @@
+email: local, -"@", domain.
+local: lchar+.
+domain: segment, -".", segment.
+segment: dchar+.
+-lchar: ["a"-"z"; "0"-"9"; "."].
+-dchar: ["a"-"z"; "0"-"9"].

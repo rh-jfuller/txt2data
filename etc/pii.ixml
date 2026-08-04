@@ -1,0 +1,12 @@
+scan: -noise+.
+-noise: ssn; phone; email; -skip.
+ssn: @value.
+@value: d, d, d, "-", d, d, "-", d, d, d, d.
+phone: @number.
+@number: d, d, d, "-", d, d, d, "-", d, d, d, d.
+email: @addr.
+@addr: local, "@", dom.
+-local: ["a"-"z"; "0"-"9"; "."]+.
+-dom: ["a"-"z"; "."]+.
+-skip: ~[].
+-d: ["0"-"9"].
