@@ -1,0 +1,7 @@
+ipv4: a, -".", b, -".", c, -".", d.
+a: octet.
+b: octet.
+c: octet.
+d: octet.
+octet: digit+.
+-digit: ["0"-"9"].

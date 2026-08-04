@@ -1,0 +1,8 @@
+doc: block, -more*.
+-more: -blank, block.
+block: h1; h2; para.
+h1: -"# ", @text.
+h2: -"## ", @text.
+para: @text.
+@text: ~[#0A]+.
+-blank: #0A, #0A.

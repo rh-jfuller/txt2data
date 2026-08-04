@@ -1,0 +1,8 @@
+address: name, -nl, street, -nl,
+          city, -", ", state, -" ", zip.
+name: ~[#0A]+.
+street: ~[#0A]+.
+city: ~[","; #0A]+.
+state: ["A"-"Z"], ["A"-"Z"].
+zip: ["0"-"9"]+.
+-nl: #0A.

@@ -1,0 +1,7 @@
+env: entry+.
+entry: key, -"=", value, -nl?.
+key: kchar+.
+value: vchar+.
+-kchar: ["A"-"Z"; "_"].
+-vchar: ~[#0A].
+-nl: #0A.

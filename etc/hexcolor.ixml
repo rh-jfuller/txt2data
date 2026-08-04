@@ -1,0 +1,5 @@
+color: -"#", red, green, blue.
+red: hex, hex.
+green: hex, hex.
+blue: hex, hex.
+-hex: ["0"-"9"; "a"-"f"].

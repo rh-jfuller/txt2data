@@ -1,0 +1,5 @@
+expr: term, rest*.
+rest: op, term.
+term: digit+.
+op: ["+"; "-"; "*"; "/"].
+-digit: ["0"-"9"].

@@ -1,0 +1,8 @@
+semver: major, -".", minor, -".", patch, pre?.
+major: digit+.
+minor: digit+.
+patch: digit+.
+pre: -"-", tag.
+tag: tchar+.
+-digit: ["0"-"9"].
+-tchar: ["a"-"z"; "0"-"9"].

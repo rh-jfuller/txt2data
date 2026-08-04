@@ -23,6 +23,9 @@ printf 'alice,30' | txt2data -e '
 
 No codegen, no build step -- just a grammar and your input.
 
+See the **[full examples catalog](docs/examples.md)** for 18 worked examples
+covering CSV, dates, URLs, PII scanning, Markdown, and more.
+
 ## Install
 
 ```sh
