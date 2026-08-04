@@ -601,7 +601,16 @@ fn has_visible_content(node: &TreeNode) -> bool {
             if *mark == Mark::Attribute {
                 return false;
             }
-            children.iter().any(has_visible_content)
+            children.iter().any(|c| {
+                has_visible_content(c)
+                    || matches!(
+                        c,
+                        TreeNode::Element {
+                            mark: Mark::Attribute,
+                            ..
+                        }
+                    )
+            })
         }
     }
 }

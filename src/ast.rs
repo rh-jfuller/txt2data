@@ -75,6 +75,7 @@ pub enum CharMember {
 }
 
 impl CharMember {
+    #[must_use]
     pub fn matches(&self, ch: char) -> bool {
         match self {
             Self::Chars(s) => s.contains(ch),
