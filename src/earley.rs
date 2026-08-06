@@ -230,6 +230,9 @@ impl Parser {
         match sym {
             Symbol::Nonterminal { name, .. } => {
                 self.predict(chart, i, name);
+                // Handle nullable: if predicted nonterminal has completed at
+                // this position (epsilon production) advance the dot immediately
+                self.complete_nullable(chart, i, item, name);
             }
             Symbol::Literal {
                 value, char_len, ..
@@ -297,6 +300,20 @@ impl Parser {
                     });
                 }
             }
+        }
+    }
+
+    fn complete_nullable(&self, chart: &mut [ChartSet], pos: usize, item: &EarleyItem, name: &str) {
+        // Check `name` already has completion at (pos, pos).
+        let has_nullable_completion = chart[pos].iter().any(|it| {
+            let r = &self.rules[it.rule_idx];
+            r.name == name && it.start == pos && it.dot == r.alts[it.alt_idx].len()
+        });
+        if has_nullable_completion {
+            chart[pos].add(EarleyItem {
+                dot: item.dot + 1,
+                ..*item
+            });
         }
     }
 

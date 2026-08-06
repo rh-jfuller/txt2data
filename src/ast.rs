@@ -140,6 +140,12 @@ fn char_in_category(ch: char, code: &str) -> bool {
                 | GeneralCategory::PrivateUse
                 | GeneralCategory::Unassigned
         ),
+        "LC" => matches!(
+            cat,
+            GeneralCategory::UppercaseLetter
+                | GeneralCategory::LowercaseLetter
+                | GeneralCategory::TitlecaseLetter
+        ),
         "Lu" => cat == GeneralCategory::UppercaseLetter,
         "Ll" => cat == GeneralCategory::LowercaseLetter,
         "Lt" => cat == GeneralCategory::TitlecaseLetter,
