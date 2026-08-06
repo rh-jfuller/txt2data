@@ -57,6 +57,9 @@ mem_forget = "deny"
 module_name_repetitions = "allow"
 similar_names = "allow"
 
+[package.metadata.generate-rpm]
+assets = [{ source = "target/release/txt2data", dest = "/usr/bin/txt2data", mode = "0755" }]
+
 [profile.release]
 opt-level = 3
 lto = true
