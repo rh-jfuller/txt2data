@@ -220,8 +220,7 @@ make install     # cargo install
 ## Known limitations
 
 - **Performance** -- not yet optimized
-- **Separated repetition** (`f++sep`) -- separator parsed but ignored
-- **Parenthesized groups** with multiple alts produce a placeholder
+- **Unicode** --  txt2data only supports Unicode 16.0 (via unicode-general-category 1.1.0)
 - **Ambiguity** -- picks one parse, no alternatives reported
 
 ## Related

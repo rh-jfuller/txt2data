@@ -122,7 +122,9 @@ impl GrammarParser {
         let name = self.parse_name()?;
         self.skip_ws();
 
-        // Consume ':' or '='.
+        let alias = self.try_parse_rename()?;
+        self.skip_ws();
+
         let ch = self.peek().ok_or(GrammarError::UnexpectedEof(self.pos))?;
         if ch != ':' && ch != '=' {
             return Err(GrammarError::Expected {
@@ -139,7 +141,12 @@ impl GrammarParser {
         self.consume('.')?;
         self.skip_ws();
 
-        Ok(Rule { mark, name, alts })
+        Ok(Rule {
+            mark,
+            name,
+            alias,
+            alts,
+        })
     }
 
     fn parse_alts(&mut self) -> Result<Vec<Alt>, GrammarError> {
@@ -210,9 +217,12 @@ impl GrammarParser {
             Some(c) if is_name_start(c) => {
                 let name = self.parse_name()?;
                 self.skip_ws();
+                let alias = self.try_parse_rename()?;
+                self.skip_ws();
                 Ok(Term::Nonterminal {
                     mark: Mark::None,
                     name,
+                    alias,
                 })
             }
             Some(c) => Err(GrammarError::Expected {
@@ -270,11 +280,13 @@ impl GrammarParser {
             self.pending_rules.push(Rule {
                 mark: Mark::Hidden,
                 name: name.clone(),
+                alias: None,
                 alts,
             });
             Ok(Term::Nonterminal {
                 mark: Mark::Hidden,
                 name,
+                alias: None,
             })
         }
     }
@@ -306,14 +318,45 @@ impl GrammarParser {
             _ => {
                 let name = self.parse_name()?;
                 self.skip_ws();
-                Ok(Term::Nonterminal { mark, name })
+                let alias = self.try_parse_rename()?;
+                self.skip_ws();
+                Ok(Term::Nonterminal { mark, name, alias })
             }
         }
     }
 
+    fn try_parse_range_endpoint(&mut self) -> Result<Option<char>, GrammarError> {
+        match self.peek() {
+            Some('"' | '\'') => {
+                let s = self.parse_quoted_string()?;
+                self.skip_ws();
+                Ok(s.chars().next())
+            }
+            Some('#') => {
+                self.advance();
+                let hex = self.parse_hex_digits()?;
+                let ch = hex_to_char(&hex, self.pos)?;
+                self.skip_ws();
+                Ok(Some(ch))
+            }
+            _ => Ok(None),
+        }
+    }
+
+    fn try_parse_rename(&mut self) -> Result<Option<String>, GrammarError> {
+        if self.peek() == Some('>') {
+            self.advance();
+            self.skip_ws();
+            let alias = self.parse_name()?;
+            Ok(Some(alias))
+        } else {
+            Ok(None)
+        }
+    }
+
     /// Parse repetition suffix and return original term
-    /// followed by a synthetic marker. Normalizer pairs
-    /// them: pops preceding symbol and wraps it in a
+    /// followed by synthetic marker. Normalizer pairs
+    /// them: pops preceding symbol and wraps it in
     /// generated repeat/option rule.
     fn try_parse_repeat(&mut self, term: Term) -> Result<Vec<Term>, GrammarError> {
         self.skip_ws();
@@ -330,6 +373,7 @@ impl GrammarParser {
                         Term::Nonterminal {
                             mark: Mark::Hidden,
                             name: format!("__repeat0_{}", self.pos),
+                            alias: None,
                         },
                     ])
                 }
@@ -346,6 +390,7 @@ impl GrammarParser {
                         Term::Nonterminal {
                             mark: Mark::Hidden,
                             name: format!("__repeat1_{}", self.pos),
+                            alias: None,
                         },
                     ])
                 }
@@ -358,6 +403,7 @@ impl GrammarParser {
                     Term::Nonterminal {
                         mark: Mark::Hidden,
                         name: format!("__option_{}", self.pos),
+                        alias: None,
                     },
                 ])
             }
@@ -383,17 +429,25 @@ impl GrammarParser {
         self.pending_rules.push(Rule {
             mark: Mark::Hidden,
             name: tail_name.clone(),
+            alias: None,
             alts: vec![vec![sep, term.clone()]],
         });
         let group_name = format!("__sepgrp_{}", self.pos);
         self.pending_rules.push(Rule {
             mark: Mark::Hidden,
             name: group_name.clone(),
+            alias: None,
             alts: vec![vec![
                 term,
                 Term::Nonterminal {
                     mark: Mark::Hidden,
                     name: tail_name,
+                    alias: None,
+                },
+                Term::Nonterminal {
+                    mark: Mark::Hidden,
+                    name: format!("__repeat0_{}", self.pos),
+                    alias: None,
                 },
             ]],
         });
@@ -401,10 +455,12 @@ impl GrammarParser {
             Term::Nonterminal {
                 mark: Mark::Hidden,
                 name: group_name,
+                alias: None,
             },
             Term::Nonterminal {
                 mark: Mark::Hidden,
                 name: format!("__option_{}", self.pos),
+                alias: None,
             },
         ]
     }
@@ -414,6 +470,7 @@ impl GrammarParser {
         self.pending_rules.push(Rule {
             mark: Mark::Hidden,
             name: tail_name.clone(),
+            alias: None,
             alts: vec![vec![sep, term.clone()]],
         });
         vec![
@@ -421,10 +478,12 @@ impl GrammarParser {
             Term::Nonterminal {
                 mark: Mark::Hidden,
                 name: tail_name,
+                alias: None,
             },
             Term::Nonterminal {
                 mark: Mark::Hidden,
                 name: format!("__repeat0_{}", self.pos),
+                alias: None,
             },
         ]
     }
@@ -456,25 +515,17 @@ impl GrammarParser {
             Some('"' | '\'') => {
                 let s = self.parse_quoted_string()?;
                 self.skip_ws();
-                // Check for range: "a"-"z".
                 if self.peek() == Some('-') {
                     let save = self.pos;
                     self.advance();
                     self.skip_ws();
-                    if matches!(self.peek(), Some('"' | '\'')) {
-                        let s2 = self.parse_quoted_string()?;
-                        self.skip_ws();
+                    if let Some(to) = self.try_parse_range_endpoint()? {
                         let from = s
-                            .chars()
-                            .next()
-                            .ok_or(GrammarError::UnexpectedEof(self.pos))?;
-                        let to = s2
                             .chars()
                             .next()
                             .ok_or(GrammarError::UnexpectedEof(self.pos))?;
                         return Ok(CharMember::Range(from, to));
                     }
-                    // Not a range after all.
                     self.pos = save;
                 }
                 Ok(CharMember::Chars(s))
@@ -484,17 +535,12 @@ impl GrammarParser {
                 let hex = self.parse_hex_digits()?;
                 let ch = hex_to_char(&hex, self.pos)?;
                 self.skip_ws();
-                // Check for range.
                 if self.peek() == Some('-') {
                     let save = self.pos;
                     self.advance();
                     self.skip_ws();
-                    if self.peek() == Some('#') {
-                        self.advance();
-                        let hex2 = self.parse_hex_digits()?;
-                        let ch2 = hex_to_char(&hex2, self.pos)?;
-                        self.skip_ws();
-                        return Ok(CharMember::Range(ch, ch2));
+                    if let Some(to) = self.try_parse_range_endpoint()? {
+                        return Ok(CharMember::Range(ch, to));
                     }
                     self.pos = save;
                 }
@@ -522,7 +568,7 @@ impl GrammarParser {
             code.push(c);
             self.advance();
             if let Some(c2) = self.peek()
-                && c2.is_ascii_lowercase()
+                && c2.is_ascii_alphabetic()
             {
                 code.push(c2);
                 self.advance();

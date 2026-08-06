@@ -45,6 +45,7 @@ pub struct Parser {
 struct NormRule {
     mark: Mark,
     name: String,
+    output_name: String,
     alts: Vec<Vec<Symbol>>,
 }
 
@@ -53,6 +54,7 @@ enum Symbol {
     Nonterminal {
         mark: Mark,
         name: String,
+        output_name: Option<String>,
     },
     Literal {
         mark: Mark,
@@ -411,7 +413,7 @@ impl Parser {
                 return Some(ParseTree {
                     root: TreeNode::Element {
                         mark: rule.mark,
-                        name: rule.name.clone(),
+                        name: rule.output_name.clone(),
                         children,
                     },
                 });
@@ -432,14 +434,31 @@ impl Parser {
         let rule_idx = self.rule_index.get(name)?.first().copied()?;
         let rule = &self.rules[rule_idx];
 
-        if start == end && rule.alts.iter().any(Vec::is_empty) {
-            return Some(ParseTree {
-                root: TreeNode::Element {
-                    mark: rule.mark,
-                    name: name.to_string(),
-                    children: vec![],
-                },
-            });
+        if start == end {
+            if name.starts_with("__plus_") {
+                let base_alt = rule.alts.iter().find(|a| a.len() == 1);
+                if let Some(base) = base_alt {
+                    let mut children = Vec::new();
+                    if self.match_symbols(ctx, base, start, end, 0, &mut children) {
+                        return Some(ParseTree {
+                            root: TreeNode::Element {
+                                mark: rule.mark,
+                                name: name.to_string(),
+                                children,
+                            },
+                        });
+                    }
+                }
+            }
+            if rule.alts.iter().any(Vec::is_empty) {
+                return Some(ParseTree {
+                    root: TreeNode::Element {
+                        mark: rule.mark,
+                        name: name.to_string(),
+                        children: vec![],
+                    },
+                });
+            }
         }
 
         let rec_alt = rule.alts.iter().find(|a| {
@@ -564,9 +583,21 @@ impl Parser {
             Symbol::Exclusion { mark, members } => {
                 self.match_charset(ctx, alt, pos, end, sym_idx, children, *mark, members, true)
             }
-            Symbol::Nonterminal { mark, name } => {
-                self.match_nonterminal(ctx, alt, pos, end, sym_idx, children, *mark, name)
-            }
+            Symbol::Nonterminal {
+                mark,
+                name,
+                output_name,
+            } => self.match_nonterminal(
+                ctx,
+                alt,
+                pos,
+                end,
+                sym_idx,
+                children,
+                *mark,
+                name,
+                output_name.as_deref(),
+            ),
         }
     }
 
@@ -613,6 +644,7 @@ impl Parser {
         children: &mut Vec<TreeNode>,
         mark: Mark,
         name: &str,
+        output_name: Option<&str>,
     ) -> bool {
         let name_idx = ctx.name_to_idx.get(name).copied().unwrap_or(usize::MAX);
         let ends = ctx
@@ -626,7 +658,10 @@ impl Parser {
                 continue;
             }
             if let Some(subtree) = self.build_tree(ctx, name, pos, split) {
-                let child_node = apply_mark(&subtree.root, mark);
+                let mut child_node = apply_mark(&subtree.root, mark);
+                if let Some(alias) = output_name {
+                    apply_rename(&mut child_node, alias);
+                }
                 let prev_len = children.len();
                 children.push(child_node);
                 if self.match_symbols(ctx, alt, split, end, sym_idx + 1, children) {
@@ -639,7 +674,12 @@ impl Parser {
     }
 }
 
-/// Use-site mark overrides rule-site mark (unless `None`).
+fn apply_rename(node: &mut TreeNode, alias: &str) {
+    if let TreeNode::Element { name, .. } = node {
+        *name = alias.to_string();
+    }
+}
+
 fn apply_mark(node: &TreeNode, use_mark: Mark) -> TreeNode {
     match node {
         TreeNode::Element {
@@ -737,6 +777,7 @@ impl Normalizer {
             .collect();
         self.rules.push(NormRule {
             mark: rule.mark,
+            output_name: rule.alias.clone().unwrap_or_else(|| rule.name.clone()),
             name: rule.name.clone(),
             alts: norm_alts,
         });
@@ -752,6 +793,7 @@ impl Normalizer {
                         syms.push(Symbol::Nonterminal {
                             mark: Mark::Hidden,
                             name: rep_name,
+                            output_name: None,
                         });
                     }
                 }
@@ -761,6 +803,7 @@ impl Normalizer {
                         syms.push(Symbol::Nonterminal {
                             mark: Mark::Hidden,
                             name: rep_name,
+                            output_name: None,
                         });
                     }
                 }
@@ -770,6 +813,7 @@ impl Normalizer {
                         syms.push(Symbol::Nonterminal {
                             mark: Mark::Hidden,
                             name: opt_name,
+                            output_name: None,
                         });
                     }
                 }
@@ -786,6 +830,7 @@ impl Normalizer {
         let name = self.fresh_name("star");
         self.rules.push(NormRule {
             mark: Mark::Hidden,
+            output_name: name.clone(),
             name: name.clone(),
             alts: vec![
                 vec![],
@@ -794,6 +839,7 @@ impl Normalizer {
                     Symbol::Nonterminal {
                         mark: Mark::Hidden,
                         name: name.clone(),
+                        output_name: None,
                     },
                 ],
             ],
@@ -801,11 +847,11 @@ impl Normalizer {
         name
     }
 
-    /// `f+` => `__plus_N: f | f, __plus_N .`
     fn make_repeat1(&mut self, sym: Symbol) -> String {
         let name = self.fresh_name("plus");
         self.rules.push(NormRule {
             mark: Mark::Hidden,
+            output_name: name.clone(),
             name: name.clone(),
             alts: vec![
                 vec![sym.clone()],
@@ -814,6 +860,7 @@ impl Normalizer {
                     Symbol::Nonterminal {
                         mark: Mark::Hidden,
                         name: name.clone(),
+                        output_name: None,
                     },
                 ],
             ],
@@ -821,11 +868,11 @@ impl Normalizer {
         name
     }
 
-    /// `f?` => `__opt_N: | f .`
     fn make_option(&mut self, sym: Symbol) -> String {
         let name = self.fresh_name("opt");
         self.rules.push(NormRule {
             mark: Mark::Hidden,
+            output_name: name.clone(),
             name: name.clone(),
             alts: vec![vec![], vec![sym]],
         });
@@ -835,9 +882,10 @@ impl Normalizer {
 
 fn normalize_term(term: &Term) -> Symbol {
     match term {
-        Term::Nonterminal { mark, name } => Symbol::Nonterminal {
+        Term::Nonterminal { mark, name, alias } => Symbol::Nonterminal {
             mark: *mark,
             name: name.clone(),
+            output_name: alias.clone(),
         },
         Term::Literal { mark, value } => {
             let char_len = value.chars().count();

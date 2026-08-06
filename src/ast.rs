@@ -30,11 +30,12 @@ impl Grammar {
     }
 }
 
-/// `name: alt1 ; alt2 .`
+/// `name: alt1 ; alt2 .` or `name>alias: alt1 ; alt2 .`
 #[derive(Debug, Clone)]
 pub struct Rule {
     pub mark: Mark,
     pub name: String,
+    pub alias: Option<String>,
     pub alts: Vec<Alt>,
 }
 
@@ -45,6 +46,7 @@ pub enum Term {
     Nonterminal {
         mark: Mark,
         name: String,
+        alias: Option<String>,
     },
     Literal {
         mark: Mark,
