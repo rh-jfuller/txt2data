@@ -1,5 +1,5 @@
-/// Earley parser: predict/scan/complete loop over normalized
-/// BNF rules, then backtrack to extract a parse tree.
+//! Earley parser: predict/scan/complete loop over normalized
+//! BNF rules, then backtrack to extract a parse tree.
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 
