@@ -1,4 +1,4 @@
-/// Parse tree -> JSON, XML, YAML, SQL INSERT, or S-expression.
+//! Parse tree to JSON, XML, YAML, SQL INSERT, or S-expression.
 use std::fmt::Write;
 
 use crate::ast::Mark;
@@ -691,7 +691,7 @@ fn collect_visible_elements<'a>(nodes: &[&'a TreeNode]) -> Vec<&'a TreeNode> {
     result
 }
 
-/// Check if node is purely text (no nested elements).
+/// Group consecutive nodes by element name for JSON array output.
 fn group_by_name<'a>(nodes: &[&'a TreeNode]) -> Vec<(String, Vec<&'a TreeNode>)> {
     let mut groups: Vec<(String, Vec<&TreeNode>)> = Vec::new();
     for node in nodes {
@@ -744,7 +744,6 @@ fn xml_escape_attr(s: &str) -> String {
 }
 
 fn json_escape(s: &str) -> String {
-    use std::fmt::Write;
     let mut buf = String::with_capacity(s.len());
     for ch in s.chars() {
         match ch {

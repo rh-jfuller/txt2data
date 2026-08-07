@@ -3,3 +3,4 @@
 /etc/pkg
 *.wasm
 Cargo.lock
+__pycache__

@@ -1,6 +1,6 @@
-/// Recursive descent parser for ixml grammar syntax.
-///
-/// Parses an ixml grammar string into a [`Grammar`] AST.
+//! Recursive descent parser for ixml grammar syntax.
+//!
+//! Parses an ixml grammar string into a [`Grammar`] AST.
 /// Handles full ixml grammar notation including
 /// marks, repetition operators, character sets, insertions,
 /// and comments.
@@ -354,10 +354,8 @@ impl GrammarParser {
         }
     }
 
-    /// Parse repetition suffix and return original term
-    /// followed by synthetic marker. Normalizer pairs
-    /// them: pops preceding symbol and wraps it in
-    /// generated repeat/option rule.
+    /// Parse repetition/separator suffix (`*`, `+`, `?`,
+    /// `**sep`, `++sep`) and return expanded terms.
     fn try_parse_repeat(&mut self, term: Term) -> Result<Vec<Term>, GrammarError> {
         self.skip_ws();
         match self.peek() {
@@ -412,8 +410,7 @@ impl GrammarParser {
     }
 
     fn try_parse_separator(&mut self) -> Result<Option<Term>, GrammarError> {
-        let ch = self.peek().unwrap_or('\0');
-        if ch == '*' || ch == '+' {
+        if matches!(self.peek(), Some('*' | '+')) {
             self.advance();
             self.skip_ws();
             let s = self.parse_term()?;
@@ -715,7 +712,7 @@ impl GrammarParser {
     fn skip_ws(&mut self) {
         loop {
             match self.peek() {
-                Some(c) if c.is_whitespace() || c == '\t' || c == '\n' || c == '\r' => {
+                Some(c) if c.is_whitespace() => {
                     self.advance();
                 }
                 Some('{') => {
@@ -788,9 +785,6 @@ fn is_name_start(c: char) -> bool {
 }
 
 fn is_name_follow(c: char) -> bool {
-    // NOTE: ixml spec allows '.' in names, but since '.'
-    // also terminates rules, we exclude it to avoid
-    // ambiguity. Names with dots are rare in practice.
     is_name_start(c)
         || c.is_ascii_digit()
         || c == '-'

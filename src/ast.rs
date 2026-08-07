@@ -1,4 +1,4 @@
-/// ixml grammar AST.
+//! ixml grammar AST.
 use std::fmt;
 
 /// Serialization mark: controls output shape.
