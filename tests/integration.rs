@@ -615,7 +615,7 @@ fn xml_escapes_special_chars() {
         val: ~[]+.";
     let xml = parse_to_xml(grammar, "<b>A&B</b>").unwrap();
     assert!(
-        xml.contains("&lt;b&gt;A&amp;B&lt;/b&gt;"),
+        xml.contains("&lt;b>A&amp;B&lt;/b>"),
         "XML not escaped: {xml}"
     );
 }

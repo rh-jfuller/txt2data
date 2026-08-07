@@ -28,7 +28,7 @@ pub enum TreeNode {
 pub fn to_xml(tree: &ParseTree) -> String {
     let mut buf = String::with_capacity(256);
     buf.push_str("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
-    serialize_xml_node(&tree.root, &mut buf, 0);
+    serialize_xml_node(&tree.root, &mut buf, 0, false);
     buf
 }
 
@@ -157,7 +157,7 @@ fn sexp_quote(s: &str) -> String {
     }
 }
 
-fn serialize_xml_node(node: &TreeNode, buf: &mut String, depth: usize) {
+fn serialize_xml_node(node: &TreeNode, buf: &mut String, depth: usize, inline: bool) {
     match node {
         TreeNode::Text { mark, value } => {
             if *mark != Mark::Hidden {
@@ -174,74 +174,114 @@ fn serialize_xml_node(node: &TreeNode, buf: &mut String, depth: usize) {
         } => match mark {
             Mark::Hidden => {
                 for child in children {
-                    serialize_xml_node(child, buf, depth);
+                    serialize_xml_node(child, buf, depth, inline);
                 }
             }
-            Mark::Attribute => {
-                // Collected by parent.
-            }
+            Mark::Attribute => {}
             Mark::None | Mark::Element => {
-                let indent = "  ".repeat(depth);
-
-                let attrs = collect_attributes(children);
-                let has_element_children = children.iter().any(|c| {
-                    matches!(
-                        c,
-                        TreeNode::Element {
-                            mark: Mark::None | Mark::Element,
-                            ..
-                        }
-                    )
-                });
-
-                buf.push_str(&indent);
-                buf.push('<');
-                buf.push_str(name);
-                for (aname, aval) in &attrs {
-                    buf.push(' ');
-                    buf.push_str(aname);
-                    buf.push_str("=\"");
-                    buf.push_str(&xml_escape_attr(aval));
-                    buf.push('"');
-                }
-
-                let non_attr_children: Vec<&TreeNode> = children
-                    .iter()
-                    .filter(|c| {
-                        !matches!(
-                            c,
-                            TreeNode::Element {
-                                mark: Mark::Attribute,
-                                ..
-                            }
-                        )
-                    })
-                    .collect();
-
-                let has_content = non_attr_children.iter().any(|c| has_visible_content(c));
-
-                if !has_content {
-                    buf.push_str("/>\n");
-                } else if has_element_children {
-                    buf.push_str(">\n");
-                    for child in &non_attr_children {
-                        serialize_xml_node(child, buf, depth + 1);
-                    }
-                    buf.push_str(&indent);
-                    buf.push_str("</");
-                    buf.push_str(name);
-                    buf.push_str(">\n");
-                } else {
-                    buf.push('>');
-                    for child in &non_attr_children {
-                        serialize_xml_node(child, buf, depth);
-                    }
-                    buf.push_str("</");
-                    buf.push_str(name);
-                    buf.push_str(">\n");
-                }
+                serialize_xml_element(name, children, buf, depth, inline);
             }
         },
+    }
+}
+
+fn serialize_xml_element(
+    name: &str,
+    children: &[TreeNode],
+    buf: &mut String,
+    depth: usize,
+    inline: bool,
+) {
+    let indent = if inline {
+        String::new()
+    } else {
+        "  ".repeat(depth)
+    };
+
+    let attrs = collect_attributes(children);
+    buf.push_str(&indent);
+    buf.push('<');
+    buf.push_str(name);
+    for (aname, aval) in &attrs {
+        buf.push(' ');
+        buf.push_str(aname);
+        buf.push_str("=\"");
+        buf.push_str(&xml_escape_attr(aval));
+        buf.push('"');
+    }
+
+    let non_attr: Vec<&TreeNode> = children
+        .iter()
+        .filter(|c| {
+            !matches!(
+                c,
+                TreeNode::Element {
+                    mark: Mark::Attribute,
+                    ..
+                }
+            )
+        })
+        .collect();
+
+    let has_content = non_attr.iter().any(|c| has_visible_content(c));
+    if has_content {
+        serialize_xml_children(name, &non_attr, buf, depth, inline, &indent);
+    } else {
+        buf.push_str("/>");
+        if !inline {
+            buf.push('\n');
+        }
+    }
+}
+
+fn serialize_xml_children(
+    name: &str,
+    children: &[&TreeNode],
+    buf: &mut String,
+    depth: usize,
+    inline: bool,
+    indent: &str,
+) {
+    let has_text = has_visible_text_content(children);
+    let has_elements = children.iter().any(|c| {
+        matches!(
+            c,
+            TreeNode::Element {
+                mark: Mark::None | Mark::Element,
+                ..
+            }
+        )
+    });
+    let mixed = has_text && has_elements;
+
+    if mixed || inline {
+        buf.push('>');
+        for child in children {
+            serialize_xml_node(child, buf, 0, true);
+        }
+        buf.push_str("</");
+        buf.push_str(name);
+        buf.push('>');
+        if !inline {
+            buf.push('\n');
+        }
+    } else if has_elements {
+        buf.push_str(">\n");
+        for child in children {
+            serialize_xml_node(child, buf, depth + 1, false);
+        }
+        buf.push_str(indent);
+        buf.push_str("</");
+        buf.push_str(name);
+        buf.push_str(">\n");
+    } else {
+        buf.push('>');
+        for child in children {
+            serialize_xml_node(child, buf, depth, true);
+        }
+        buf.push_str("</");
+        buf.push_str(name);
+        buf.push_str(">\n");
     }
 }
 
@@ -592,26 +632,37 @@ fn collect_text_into(node: &TreeNode, buf: &mut String) {
     }
 }
 
+/// Check if any node in a list has visible text (not element) content.
+fn has_visible_text_content(nodes: &[&TreeNode]) -> bool {
+    nodes.iter().any(|n| has_visible_text_in_node(n))
+}
+
+fn has_visible_text_in_node(node: &TreeNode) -> bool {
+    match node {
+        TreeNode::Text { mark, value } => *mark != Mark::Hidden && !value.is_empty(),
+        TreeNode::Insertion { value } => !value.is_empty(),
+        TreeNode::Element {
+            mark: Mark::Hidden,
+            children,
+            ..
+        } => {
+            let refs: Vec<&TreeNode> = children.iter().collect();
+            has_visible_text_content(&refs)
+        }
+        TreeNode::Element { .. } => false,
+    }
+}
+
 /// Check if node has visible content.
 fn has_visible_content(node: &TreeNode) -> bool {
     match node {
         TreeNode::Text { mark, value } => *mark != Mark::Hidden && !value.is_empty(),
         TreeNode::Insertion { value } => !value.is_empty(),
-        TreeNode::Element { mark, children, .. } => {
-            if *mark == Mark::Attribute {
-                return false;
-            }
-            children.iter().any(|c| {
-                has_visible_content(c)
-                    || matches!(
-                        c,
-                        TreeNode::Element {
-                            mark: Mark::Attribute,
-                            ..
-                        }
-                    )
-            })
-        }
+        TreeNode::Element { mark, children, .. } => match mark {
+            Mark::Attribute => false,
+            Mark::Hidden => children.iter().any(has_visible_content),
+            Mark::None | Mark::Element => true,
+        },
     }
 }
 
@@ -673,7 +724,6 @@ fn xml_escape(s: &str) -> String {
         match ch {
             '&' => buf.push_str("&amp;"),
             '<' => buf.push_str("&lt;"),
-            '>' => buf.push_str("&gt;"),
             _ => buf.push(ch),
         }
     }
@@ -686,7 +736,6 @@ fn xml_escape_attr(s: &str) -> String {
         match ch {
             '&' => buf.push_str("&amp;"),
             '<' => buf.push_str("&lt;"),
-            '>' => buf.push_str("&gt;"),
             '"' => buf.push_str("&quot;"),
             _ => buf.push(ch),
         }
